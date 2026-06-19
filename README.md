@@ -80,3 +80,9 @@ memory management, and multitasking.
 
 `limine.h` (Limine protocol) and `font8x8` (public-domain bitmap font) are
 vendored in-tree. See [THIRD_PARTY.md](THIRD_PARTY.md) for licenses and origins.
+
+## License
+
+NovaOS is released under the **MIT License** — see [LICENSE](LICENSE).
+Vendored third-party files keep their own licenses (see
+[THIRD_PARTY.md](THIRD_PARTY.md)).
