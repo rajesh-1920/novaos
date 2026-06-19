@@ -1,0 +1,11 @@
+# Build output
+/build/
+
+# Fetched dependencies (Limine bootloader, OVMF firmware)
+/deps/
+
+# Editor / OS cruft
+*.o
+*.d
+*.swp
+.DS_Store
