@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 rajesh_1920
 /*
  * lib/printf.c - Minimal printf-family for the kernel.
  *

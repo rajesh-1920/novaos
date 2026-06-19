@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 rajesh_1920 */
 /*
  * nova/cpu.h - Thin wrappers over a handful of x86_64 instructions.
  *

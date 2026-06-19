@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 rajesh_1920 */
 /*
  * nova/console.h - Text console rendered on the framebuffer.
  *

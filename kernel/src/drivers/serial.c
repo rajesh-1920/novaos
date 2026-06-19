@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 rajesh_1920
 /*
  * drivers/serial.c - 16550 UART driver for COM1.
  *

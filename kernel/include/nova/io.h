@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 rajesh_1920 */
 /*
  * nova/io.h - x86 port-mapped I/O (the `in`/`out` instructions).
  *

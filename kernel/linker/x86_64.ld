@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 rajesh_1920 */
 /*
  * x86_64.ld - Link script for the NovaOS kernel.
  *

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 rajesh_1920
 /*
  * drivers/framebuffer.c - Linear 32-bpp framebuffer drawing primitives.
  *

@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 rajesh_1920 */
 /*
  * nova/serial.h - 16550 UART driver (COM1), used as a debug log sink.
  *

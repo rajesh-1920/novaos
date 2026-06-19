@@ -7,7 +7,7 @@ NovaOS vendors two small external files. Everything else is original.
 - **Project:** Limine bootloader, protocol header.
 - **Source:** https://github.com/limine-bootloader/limine-protocol
   (pinned at commit `80ef54bed402b8c0b672a707c1df4c532f3428ad`).
-- **License:** BSD-2-Clause (see the Limine project).
+- **License:** 0BSD (BSD Zero Clause — as declared by the file's own SPDX tag).
 - **Why vendored:** it is a single self-contained header (only needs
   `<stdint.h>`), so the kernel compiles offline. Only the bootloader *binaries*
   are fetched at build time by `scripts/get-deps.sh`.

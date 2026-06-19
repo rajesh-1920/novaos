@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2026 rajesh_1920
 /*
  * console/console.c - Text console on top of the framebuffer.
  *

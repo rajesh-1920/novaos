@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 rajesh_1920
 #
 # get-deps.sh - Fetch the one external build dependency: the Limine bootloader.
 #
