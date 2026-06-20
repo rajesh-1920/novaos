@@ -9,30 +9,32 @@ the rest of the app never names a specific binding.
 
 try:
     from PySide6.QtCore import (
-        Qt, QTimer, QSize, QPoint, QRectF, Signal,
+        Qt, QTimer, QSize, QPoint, QRectF, QUrl, Signal,
     )
     from PySide6.QtGui import (
         QIcon, QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QGradient,
+        QImage,
     )
     from PySide6.QtWidgets import (
         QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
         QFormLayout, QMdiArea, QMdiSubWindow, QFrame, QPushButton, QToolButton,
         QLabel, QMenu, QPlainTextEdit, QLineEdit, QListWidget, QListWidgetItem,
-        QComboBox, QInputDialog, QMessageBox,
+        QComboBox, QInputDialog, QMessageBox, QTextBrowser,
     )
     BINDING = "PySide6"
 except ImportError:  # fall back to PyQt5
     from PyQt5.QtCore import (
-        Qt, QTimer, QSize, QPoint, QRectF, pyqtSignal as Signal,
+        Qt, QTimer, QSize, QPoint, QRectF, QUrl, pyqtSignal as Signal,
     )
     from PyQt5.QtGui import (
         QIcon, QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QGradient,
+        QImage,
     )
     from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
         QFormLayout, QMdiArea, QMdiSubWindow, QFrame, QPushButton, QToolButton,
         QLabel, QMenu, QPlainTextEdit, QLineEdit, QListWidget, QListWidgetItem,
-        QComboBox, QInputDialog, QMessageBox,
+        QComboBox, QInputDialog, QMessageBox, QTextBrowser,
     )
     BINDING = "PyQt5"
 

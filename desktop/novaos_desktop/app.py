@@ -20,6 +20,7 @@ from .window import AppWindow
 from .apps.terminal import Terminal
 from .apps.files import Files
 from .apps.editor import Editor
+from .apps.browser import Browser
 from .apps.calculator import Calculator
 from .apps.settings import Settings
 from .apps.about import About
@@ -29,6 +30,7 @@ from . import __version__
 APP_SPECS = {
     "Terminal":   ("T", "#2d7d46"),
     "Files":      ("F", "#3b6ea5"),
+    "Browser":    ("B", "#2563eb"),
     "Editor":     ("E", "#8a5cf6"),
     "Calculator": ("C", "#c2410c"),
     "Settings":   ("S", "#475569"),
@@ -38,6 +40,7 @@ APP_SPECS = {
 DEFAULT_SIZES = {
     "Terminal":   QSize(660, 430),
     "Files":      QSize(560, 430),
+    "Browser":    QSize(860, 580),
     "Editor":     QSize(640, 470),
     "Calculator": QSize(300, 430),
     "Settings":   QSize(440, 380),
@@ -132,7 +135,7 @@ class NovaDesktop(QMainWindow):
         col = QVBoxLayout(self.icons)
         col.setContentsMargins(12, 12, 12, 12)
         col.setSpacing(16)
-        for name in ("Terminal", "Files", "Editor", "About"):
+        for name in ("Terminal", "Files", "Browser", "Editor", "About"):
             letter, color = APP_SPECS[name]
             btn = QToolButton()
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -158,6 +161,8 @@ class NovaDesktop(QMainWindow):
                             lambda: self.username)
         if name == "Files":
             return Files(self.fs, lambda p: self.launch_app("Editor", path=p))
+        if name == "Browser":
+            return Browser()
         if name == "Editor":
             w = Editor(self.fs)
             if path:

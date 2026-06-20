@@ -43,6 +43,7 @@ pip install -r requirements.txt        # PySide6
 |-------------|--------------------------------------------------------------|
 | **Terminal**| A shell: `help`, `ls`, `cd`, `cat`, `mkdir`, `touch`, `rm`, `echo`, `calc`, `date`, `neofetch`, `open <app>`, `clear` |
 | **Files**   | Browse/create/delete files & folders on the virtual drive    |
+| **Browser** | Web browser — Chromium (Qt WebEngine) if installed, else a built-in lite engine (urllib + QTextBrowser) with address bar, back/forward and search |
 | **Editor**  | Open, edit and save text files                               |
 | **Calculator** | Four-function calculator                                  |
 | **Settings**| Change wallpaper, theme (dark/light) and username           |
@@ -72,7 +73,7 @@ desktop/
     ├── icons.py               # painted app icons (no image assets)
     ├── style.py               # themes + wallpaper brushes
     ├── filesystem.py          # NovaFS sandboxed virtual drive
-    └── apps/                  # terminal, files, editor, calculator, settings, about
+    └── apps/                  # terminal, files, browser, editor, calculator, settings, about
 ```
 
 ## Developer notes
