@@ -64,23 +64,39 @@ works both in the QEMU window (PS/2 keyboard) and over the serial console.
 | `clear`       | clear the screen     |
 | `reboot`      | restart the machine  |
 
+## NovaOS Desktop (companion app)
+
+Alongside the kernel, this repo ships **NovaOS Desktop** — a *simulated* OS
+desktop that runs as an ordinary application (Python + Qt): wallpaper, taskbar,
+Start menu, draggable windows, and built-in apps (Terminal, Files, Editor,
+Calculator, Settings, About). It's a friendly GUI companion to the bare-metal
+kernel (it is **not** a virtual machine).
+
+```sh
+cd desktop
+./run.sh          # needs PyQt5 or PySide6 (auto-detected)
+```
+
+See [desktop/README.md](desktop/README.md) for the full details.
+
 ## Layout
 
 ```
 novaos/
-├── Makefile              # build orchestration
+├── Makefile              # kernel build orchestration
 ├── boot/limine.conf      # bootloader menu / kernel path
 ├── scripts/get-deps.sh   # fetches the Limine bootloader
 ├── docs/                 # ARCHITECTURE.md, ROADMAP.md
-└── kernel/
-    ├── include/          # public headers (limine.h + nova/*.h)
-    ├── linker/x86_64.ld  # higher-half link script
-    └── src/
-        ├── main.c        # entry point + Limine handshake
-        ├── lib/          # string.c, printf.c (freestanding libc bits)
-        ├── drivers/      # serial.c, framebuffer.c, keyboard.c
-        ├── console/      # console.c, font8x8.c
-        └── shell/        # shell.c (interactive command shell)
+├── kernel/               # the bare-metal OS kernel (C + Limine)
+│   ├── include/          # public headers (limine.h + nova/*.h)
+│   ├── linker/x86_64.ld  # higher-half link script
+│   └── src/
+│       ├── main.c        # entry point + Limine handshake
+│       ├── lib/          # string.c, printf.c (freestanding libc bits)
+│       ├── drivers/      # serial.c, framebuffer.c, keyboard.c
+│       ├── console/      # console.c, font8x8.c
+│       └── shell/        # shell.c (interactive command shell)
+└── desktop/              # NovaOS Desktop: simulated-OS GUI app (PyQt5/PySide6)
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it all fits together
