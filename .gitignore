@@ -9,3 +9,8 @@
 *.d
 *.swp
 .DS_Store
+
+# Python (NovaOS Desktop app)
+__pycache__/
+*.pyc
+*.pyo

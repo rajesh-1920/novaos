@@ -1,0 +1,3 @@
+# NovaOS Desktop runtime dependency.
+# (Already installed on this machine; listed for portability.)
+PySide6>=6.5
