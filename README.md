@@ -68,9 +68,10 @@ works both in the QEMU window (PS/2 keyboard) and over the serial console.
 
 Alongside the kernel, this repo ships **NovaOS Desktop** — a *simulated* OS
 desktop that runs as an ordinary application (Python + Qt): wallpaper, taskbar,
-Start menu, draggable windows, and built-in apps (Terminal, Files, Browser,
-Editor, Calculator, Settings, About). It's a friendly GUI companion to the
-bare-metal kernel (it is **not** a virtual machine).
+Start menu, draggable windows, and built-in apps including a web Browser and a
+real Wi-Fi manager (Terminal, Files, Browser, Network, Editor, Calculator,
+Settings, About). It's a friendly GUI companion to the bare-metal kernel (it is
+**not** a virtual machine).
 
 ```sh
 cd desktop

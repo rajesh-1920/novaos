@@ -6,12 +6,13 @@ It provides the wallpaper (an MDI area), a bottom taskbar with a Start menu,
 running-window buttons and a live clock, a column of desktop icons, and the
 window-management glue that launches apps into draggable MDI subwindows.
 """
+import threading
 from datetime import datetime
 
 from .qt import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMdiArea, QFrame,
     QPushButton, QToolButton, QLabel, QMenu, QApplication,
-    Qt, QTimer, QSize, QPoint,
+    Qt, QTimer, QSize, QPoint, Signal,
 )
 
 from .icons import make_icon
@@ -21,6 +22,7 @@ from .apps.terminal import Terminal
 from .apps.files import Files
 from .apps.editor import Editor
 from .apps.browser import Browser
+from .apps.network import Network, short_status
 from .apps.calculator import Calculator
 from .apps.settings import Settings
 from .apps.about import About
@@ -31,6 +33,7 @@ APP_SPECS = {
     "Terminal":   ("T", "#2d7d46"),
     "Files":      ("F", "#3b6ea5"),
     "Browser":    ("B", "#2563eb"),
+    "Network":    ("N", "#0d9488"),
     "Editor":     ("E", "#8a5cf6"),
     "Calculator": ("C", "#c2410c"),
     "Settings":   ("S", "#475569"),
@@ -41,6 +44,7 @@ DEFAULT_SIZES = {
     "Terminal":   QSize(660, 430),
     "Files":      QSize(560, 430),
     "Browser":    QSize(860, 580),
+    "Network":    QSize(540, 480),
     "Editor":     QSize(640, 470),
     "Calculator": QSize(300, 430),
     "Settings":   QSize(440, 380),
@@ -49,6 +53,8 @@ DEFAULT_SIZES = {
 
 
 class NovaDesktop(QMainWindow):
+    _net_status = Signal(str)
+
     def __init__(self, fs):
         super().__init__()
         self.fs = fs
@@ -85,6 +91,13 @@ class NovaDesktop(QMainWindow):
         self._clock_timer.start(1000)
         self._tick_clock()
 
+        # Live network/Wi-Fi indicator (polled off the GUI thread).
+        self._net_status.connect(self.net_btn.setText)
+        self._net_timer = QTimer(self)
+        self._net_timer.timeout.connect(self._poll_net)
+        self._net_timer.start(8000)
+        self._poll_net()
+
         QApplication.instance().setStyleSheet(theme_qss(self.theme_name))
 
     # -- taskbar ------------------------------------------------------------
@@ -107,6 +120,12 @@ class NovaDesktop(QMainWindow):
         running_container.setLayout(self._running)
         row.addWidget(running_container, 1)
 
+        self.net_btn = QPushButton("Wi-Fi")
+        self.net_btn.setObjectName("NetButton")
+        self.net_btn.setToolTip("Network — click to manage Wi-Fi")
+        self.net_btn.clicked.connect(lambda: self.launch_app("Network"))
+        row.addWidget(self.net_btn)
+
         self.clock = QLabel()
         self.clock.setObjectName("Clock")
         self.clock.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -128,6 +147,10 @@ class NovaDesktop(QMainWindow):
     def _tick_clock(self):
         self.clock.setText(datetime.now().strftime("%a %d %b   %H:%M:%S"))
 
+    def _poll_net(self):
+        threading.Thread(
+            target=lambda: self._net_status.emit(short_status()), daemon=True).start()
+
     # -- desktop icons ------------------------------------------------------
     def _build_desktop_icons(self):
         self.icons = QWidget(self.mdi.viewport())
@@ -135,7 +158,7 @@ class NovaDesktop(QMainWindow):
         col = QVBoxLayout(self.icons)
         col.setContentsMargins(12, 12, 12, 12)
         col.setSpacing(16)
-        for name in ("Terminal", "Files", "Browser", "Editor", "About"):
+        for name in ("Terminal", "Files", "Browser", "Network", "Editor", "About"):
             letter, color = APP_SPECS[name]
             btn = QToolButton()
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -163,6 +186,8 @@ class NovaDesktop(QMainWindow):
             return Files(self.fs, lambda p: self.launch_app("Editor", path=p))
         if name == "Browser":
             return Browser()
+        if name == "Network":
+            return Network()
         if name == "Editor":
             w = Editor(self.fs)
             if path:

@@ -59,6 +59,8 @@ QScrollBar::add-line, QScrollBar::sub-line { height: 0; }
 #StartButton { background: #3b6ea5; color: white; font-weight: bold; border: none; border-radius: 6px; }
 #StartButton:hover { background: #4a82c0; }
 #Clock { color: #c0caf5; padding-right: 8px; }
+#NetButton { background: transparent; border: none; color: #c0caf5; padding: 4px 10px; }
+#NetButton:hover { background: #1c2233; border-radius: 6px; }
 #DesktopIcons { background: transparent; }
 QMdiSubWindow { background: #1e2230; }
 QMdiSubWindow > QWidget { background: #1e2230; }
@@ -92,6 +94,8 @@ QComboBox { background: #eef2f9; border: 1px solid #c7d0e0; border-radius: 6px; 
 #StartButton { background: #3b6ea5; color: white; font-weight: bold; border: none; border-radius: 6px; }
 #StartButton:hover { background: #4a82c0; }
 #Clock { color: #1e2230; padding-right: 8px; }
+#NetButton { background: transparent; border: none; color: #1e2230; padding: 4px 10px; }
+#NetButton:hover { background: #cdd5e3; border-radius: 6px; }
 #DesktopIcons { background: transparent; }
 QMdiSubWindow { background: #ffffff; }
 QMdiSubWindow > QWidget { background: #ffffff; }
