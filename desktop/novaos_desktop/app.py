@@ -116,7 +116,7 @@ class NovaDesktop(QMainWindow):
             act = menu.addAction(make_icon(letter, color), name)
             act.triggered.connect(lambda _=False, n=name: self.launch_app(n))
         menu.addSeparator()
-        quit_act = menu.addAction("Log out")
+        quit_act = menu.addAction("Power off")
         quit_act.triggered.connect(self.close)
         # pop up just above the Start button
         pos = self.start_btn.mapToGlobal(QPoint(0, 0))
