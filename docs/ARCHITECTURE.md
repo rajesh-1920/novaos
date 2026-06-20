@@ -34,7 +34,7 @@ kmain()  (kernel/src/main.c)
     │  3. fb_init(...)             -> adopt the linear framebuffer
     │  4. console_init(...)        -> text console on the framebuffer
     │  5. print banner + system info via kprintf()
-    │  6. cpu_hang()               -> hlt loop (no scheduler yet)
+    │  6. kbd_init() + shell_run() -> interactive command loop (REPL)
 ```
 
 Because Limine does the CPU mode setup, **there is no assembly boot stub** in
@@ -59,9 +59,11 @@ places the kernel in the higher half, which is what `-mcmodel=kernel` assumes.
 | Module                         | Responsibility                                  |
 |--------------------------------|-------------------------------------------------|
 | `kernel/src/main.c`            | Entry point, Limine handshake, `klog`/`kpanic`  |
-| `kernel/src/drivers/serial.c`  | 16550 UART (COM1) debug log                      |
+| `kernel/src/drivers/serial.c`  | 16550 UART (COM1): debug log + serial input      |
+| `kernel/src/drivers/keyboard.c`| Polled PS/2 keyboard → ASCII (scancode set 1)    |
 | `kernel/src/drivers/framebuffer.c` | Pixel/rect drawing + scrolling on a linear FB |
 | `kernel/src/console/console.c` | Text console: glyph drawing, cursor, scrolling   |
+| `kernel/src/shell/shell.c`     | Interactive command shell (read-eval-print loop) |
 | `kernel/src/console/font8x8.c` | Vendored 8x8 bitmap font data                     |
 | `kernel/src/lib/string.c`      | `memcpy/memset/memmove/memcmp/strlen`            |
 | `kernel/src/lib/printf.c`      | `kvsnprintf`/`ksnprintf`/`kprintf`               |

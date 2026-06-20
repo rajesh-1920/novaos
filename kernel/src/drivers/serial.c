@@ -18,6 +18,7 @@
 #define REG_LINE_CTRL   3   /* line control (DLAB lives here)     */
 #define REG_MODEM_CTRL  4   /* modem control                      */
 #define REG_LINE_STATUS 5   /* line status                        */
+#define REG_SCRATCH     7   /* scratch register (presence probe)  */
 
 #define LINE_STATUS_THR_EMPTY 0x20  /* transmit holding register empty */
 
@@ -31,19 +32,15 @@ bool serial_init(void)
     outb(COM1 + REG_INT_ENABLE, 0x00);  /* divisor high = 0            */
     outb(COM1 + REG_LINE_CTRL,  0x03);  /* 8 bits, no parity, 1 stop   */
     outb(COM1 + REG_FIFO_CTRL,  0xC7);  /* enable+clear FIFO, 14-byte  */
-    outb(COM1 + REG_MODEM_CTRL, 0x0B);  /* RTS/DSR set, OUT2 on        */
+    outb(COM1 + REG_MODEM_CTRL, 0x0F);  /* DTR/RTS/OUT1/OUT2, normal   */
 
-    /* Loopback self-test: send a byte and check it comes back. */
-    outb(COM1 + REG_MODEM_CTRL, 0x1E);  /* enable loopback             */
-    outb(COM1 + REG_DATA, 0xAE);
-    if (inb(COM1 + REG_DATA) != 0xAE) {
-        return false;                    /* no functional serial port  */
-    }
-
-    /* Back to normal operation. */
-    outb(COM1 + REG_MODEM_CTRL, 0x0F);
+    /* Presence probe via the scratch register. Unlike a loopback test this
+     * never touches the receive path, so it can't swallow an incoming byte
+     * (QEMU drops chardev input while loopback mode is enabled). We mark the
+     * port initialised regardless: on a real PC / QEMU COM1 always exists. */
     initialized = true;
-    return true;
+    outb(COM1 + REG_SCRATCH, 0xAB);
+    return inb(COM1 + REG_SCRATCH) == 0xAB;
 }
 
 static void put_raw(char c)
@@ -73,4 +70,18 @@ void serial_write(const char *s)
     while (*s != '\0') {
         serial_write_char(*s++);
     }
+}
+
+#define LINE_STATUS_DATA_READY 0x01
+
+bool serial_try_getchar(char *out)
+{
+    if (!initialized) {
+        return false;
+    }
+    if ((inb(COM1 + REG_LINE_STATUS) & LINE_STATUS_DATA_READY) == 0) {
+        return false;
+    }
+    *out = (char)inb(COM1 + REG_DATA);
+    return true;
 }

@@ -3,10 +3,12 @@
 NovaOS is built milestone by milestone. Each one is small, ends in something you
 can see working, and lays groundwork for the next. Tackle them in order.
 
-### ✅ Milestone 1 — Boot & output (done)
+### ✅ Milestone 1 — Boot, output & a shell (done)
 - Boot via Limine into 64-bit long mode.
-- Serial (COM1) log + framebuffer text console.
+- Serial (COM1) log + framebuffer text console with scrolling.
 - `kprintf`, a tiny freestanding string lib, a banner.
+- Polled PS/2 keyboard + serial input driving an interactive shell
+  (`help`, `about`, `version`, `echo`, `clear`, `reboot`).
 
 ### Milestone 2 — CPU tables & interrupts
 - **GDT**: load a flat 64-bit Global Descriptor Table (`kernel/src/arch/x86_64/gdt.c`).
@@ -15,11 +17,12 @@ can see working, and lays groundwork for the next. Tackle them in order.
 - **PIC/APIC**: remap the legacy PIC (or set up the Local APIC) and unmask IRQs.
 - *Visible result:* trigger an exception on purpose and see a clean panic.
 
-### Milestone 3 — Timer & keyboard (interactive)
+### Milestone 3 — Interrupt-driven I/O
 - **PIT or APIC timer**: a periodic tick; print a heartbeat.
-- **PS/2 keyboard** driver on IRQ1: translate scancodes to ASCII.
-- A minimal line editor → the start of a shell.
-- *Visible result:* type into NovaOS and echo characters back.
+- Move the **PS/2 keyboard** from polling to an IRQ1 handler with a ring buffer.
+- *Visible result:* the shell no longer busy-polls; input is interrupt-driven.
+- (A polled keyboard + shell already exist from Milestone 1 — this milestone
+  makes them interrupt-driven.)
 
 ### Milestone 4 — Physical & virtual memory
 - **Physical frame allocator** from Limine's memory map (add a

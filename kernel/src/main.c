@@ -22,6 +22,8 @@
 #include <nova/framebuffer.h>
 #include <nova/console.h>
 #include <nova/printf.h>
+#include <nova/keyboard.h>
+#include <nova/shell.h>
 
 /* --- Limine requests -----------------------------------------------------
  * Each lives in the .limine_requests section (see the linker script) and must
@@ -121,9 +123,12 @@ void kmain(void)
             (unsigned)fb->width, (unsigned)fb->height, (unsigned)fb->bpp);
     kprintf("Kernel base : %p\n", (void *)kmain);
 
-    klog("boot complete; entering idle loop.\n");
+    klog("boot complete; starting interactive shell.\n");
 
-    /* Nothing left to do yet: park the CPU. Interrupts are still masked, so
-     * this halts forever until NovaOS grows an interrupt-driven scheduler. */
-    cpu_hang();
+    /* Hand off to the shell: an interactive read-eval-print loop driven by the
+     * polled keyboard and serial port. It never returns. */
+    kbd_init();
+    shell_run();
+
+    cpu_hang();   /* safety net, should be unreachable */
 }

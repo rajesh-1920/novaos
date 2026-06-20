@@ -3,7 +3,8 @@
 A small, clean, hobby operating system kernel for **x86_64**, written in **C**
 and booted with the modern **[Limine](https://github.com/limine-bootloader/limine)**
 bootloader. NovaOS boots straight into 64-bit long mode, brings up a serial log
-and a framebuffer text console, prints a banner, and idles.
+and a framebuffer text console, prints a banner, and drops into an **interactive
+shell** you can type commands into (PS/2 keyboard or serial).
 
 It is built to be *read*: every subsystem is a small, self-contained module with
 a clear header, and the build is a single conventional `Makefile`.
@@ -49,6 +50,20 @@ your terminal (QEMU is launched with `-serial stdio`).
 | `make clean`    | Remove build artifacts                                  |
 | `make distclean`| Also remove fetched dependencies                        |
 
+## Using NovaOS
+
+After it boots you get a `nova>` prompt. Type a command and press Enter — input
+works both in the QEMU window (PS/2 keyboard) and over the serial console.
+
+| Command       | Description          |
+|---------------|----------------------|
+| `help`        | list commands        |
+| `about`       | what NovaOS is       |
+| `version`     | kernel version       |
+| `echo <text>` | print text back      |
+| `clear`       | clear the screen     |
+| `reboot`      | restart the machine  |
+
 ## Layout
 
 ```
@@ -63,8 +78,9 @@ novaos/
     └── src/
         ├── main.c        # entry point + Limine handshake
         ├── lib/          # string.c, printf.c (freestanding libc bits)
-        ├── drivers/      # serial.c, framebuffer.c
-        └── console/      # console.c, font8x8.c
+        ├── drivers/      # serial.c, framebuffer.c, keyboard.c
+        ├── console/      # console.c, font8x8.c
+        └── shell/        # shell.c (interactive command shell)
 ```
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how it all fits together
@@ -72,9 +88,9 @@ and [docs/ROADMAP.md](docs/ROADMAP.md) for what to build next.
 
 ## Status
 
-Milestone 1 (bootable kernel with on-screen + serial output) — **done**.
-NovaOS is an active learning project; the roadmap grows it toward interrupts,
-memory management, and multitasking.
+Milestone 1 (bootable kernel, on-screen + serial output) and a polled
+interactive shell — **done**. NovaOS is an active learning project; the roadmap
+grows it toward interrupt-driven I/O, memory management, and multitasking.
 
 ## Third-party code
 

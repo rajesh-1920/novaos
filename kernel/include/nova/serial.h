@@ -17,4 +17,8 @@ bool serial_init(void);
 void serial_write_char(char c);
 void serial_write(const char *s);
 
+/* Non-blocking receive: if a byte has arrived on COM1, store it in *out and
+ * return true; otherwise return false. Lets the shell be driven over serial. */
+bool serial_try_getchar(char *out);
+
 #endif /* NOVA_SERIAL_H */
