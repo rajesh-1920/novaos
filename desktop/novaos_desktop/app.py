@@ -85,6 +85,8 @@ class NovaDesktop(QMainWindow):
         self.mdi.setOption(QMdiArea.DontMaximizeSubWindowOnActivation, True)
         self.mdi.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.mdi.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.mdi.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.mdi.customContextMenuRequested.connect(self._desktop_menu)
 
         central = QWidget()
         layout = QVBoxLayout(central)
@@ -148,6 +150,21 @@ class NovaDesktop(QMainWindow):
         self.clock.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         row.addWidget(self.clock)
         return bar
+
+    def _desktop_menu(self, pos):
+        menu = QMenu(self)
+        apps = menu.addMenu("Open App")
+        for name, (letter, color) in APP_SPECS.items():
+            act = apps.addAction(make_icon(letter, color), name)
+            act.triggered.connect(lambda checked=False, n=name: self.launch_app(n))
+        wallpaper = menu.addMenu("Wallpaper")
+        for wname in WALLPAPERS:
+            act = wallpaper.addAction(wname)
+            act.triggered.connect(lambda checked=False, w=wname: self.set_wallpaper(w))
+        menu.addSeparator()
+        settings_act = menu.addAction("Settings")
+        settings_act.triggered.connect(lambda checked=False: self.launch_app("Settings"))
+        menu.exec_(self.mdi.mapToGlobal(pos))
 
     def _show_start_menu(self):
         menu = QMenu(self)

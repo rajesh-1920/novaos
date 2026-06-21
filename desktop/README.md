@@ -42,7 +42,7 @@ pip install -r requirements.txt        # PySide6
 | App         | What it does                                                  |
 |-------------|--------------------------------------------------------------|
 | **Terminal**| A shell: `help`, `ls`, `cd`, `cat`, `mkdir`, `touch`, `rm`, `echo`, `calc`, `date`, `neofetch`, `open <app>`, `clear` |
-| **Files**   | Browse, create, copy/cut/paste (multi-select), and delete files & folders on the virtual drive. Delete moves to a hidden Trash so `Ctrl+Z` can undo it. |
+| **Files**   | Browse, create, copy/cut/paste (multi-select), rename and delete files & folders on the virtual drive, with a right-click context menu. Delete moves to a hidden Trash so `Ctrl+Z` can undo it. |
 | **Browser** | Web browser — Chromium (Qt WebEngine) if installed, else a built-in lite engine (urllib + QTextBrowser) with address bar, back/forward and search |
 | **Network** | **Sandboxed** Wi-Fi manager: a *virtual* NovaOS network you can turn on/off, connect and disconnect. It gates NovaOS apps (the Browser goes offline when it's off) but **never changes your computer's real Wi-Fi**. Shows a read-only scan of nearby networks for realism. |
 | **Monitor** | Task manager for NovaOS Desktop: lists the **NovaOS apps** currently running (PID, app, status, uptime) &mdash; *not* the host computer's processes. Shows NovaOS Desktop's own CPU/RAM footprint; **End Task** closes the selected app and **Switch To** focuses it. |
@@ -66,8 +66,13 @@ the taskbar tracks open windows and shows a live clock.
 | Files        | `Ctrl+C/X/V`          | copy / cut / paste file(s)      |
 | Files        | `Ctrl+A`, `Ctrl+Z`    | select all, undo last op        |
 | Files        | `Delete`              | move selected to Trash          |
+| Files        | `F2`                  | rename                          |
 | Files        | `Enter`               | open file / enter folder        |
 | Files        | `Backspace`, `F5`     | go up, refresh                  |
+
+**Mouse:** right-click in **Files** for a context menu (Open, Rename, Copy,
+Cut, Paste, Delete, New Folder), and right-click the **desktop** to open an app
+or change the wallpaper.
 | Editor       | `Ctrl+N/O/S`          | new / open / save               |
 | Browser      | `Alt+←` / `Alt+→`     | back / forward                  |
 | Browser      | `Ctrl+R`, `Ctrl+L`    | reload, focus address bar       |

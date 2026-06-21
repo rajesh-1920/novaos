@@ -13,7 +13,8 @@ import shutil
 
 from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QPushButton, QLabel, QInputDialog, QMessageBox, QAbstractItemView, Qt, QSize,
+    QPushButton, QLabel, QInputDialog, QMessageBox, QAbstractItemView, QMenu,
+    Qt, QSize,
 )
 
 from ..icons import make_icon
@@ -48,6 +49,8 @@ class _FileList(QListWidget):
             self.owner._open_selected()
         elif key == Qt.Key_Backspace:
             self.owner._go_up()
+        elif key == Qt.Key_F2:
+            self.owner._rename()
         elif key == Qt.Key_F5:
             self.owner.refresh()
         else:
@@ -92,6 +95,8 @@ class Files(QWidget):
         self.listw.setIconSize(QSize(28, 28))
         self.listw.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.listw.itemDoubleClicked.connect(self._open_item)
+        self.listw.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.listw.customContextMenuRequested.connect(self._context_menu)
         layout.addWidget(self.listw, 1)
 
         hint = QLabel("Keys: Ctrl+C/X/V copy·cut·paste · Ctrl+A all · "
@@ -141,6 +146,50 @@ class Files(QWidget):
         if ok and name.strip():
             self.fs.mkdir(self.fs.join(self.cwd, name.strip()))
             self.refresh()
+
+    def _context_menu(self, pos):
+        item = self.listw.itemAt(pos)
+        if item is not None and not item.isSelected():
+            self.listw.clearSelection()
+            item.setSelected(True)
+            self.listw.setCurrentItem(item)
+
+        menu = QMenu(self)
+        if item is not None:
+            menu.addAction("Open", self._open_selected)
+            menu.addAction("Rename", self._rename)
+            menu.addSeparator()
+            menu.addAction("Copy", self._copy)
+            menu.addAction("Cut", self._cut)
+        if self._clip:
+            menu.addAction("Paste", self._paste)
+        menu.addSeparator()
+        menu.addAction("New Folder", self._new_folder)
+        if item is not None:
+            menu.addAction("Delete", self._delete)
+        menu.addAction("Refresh", self.refresh)
+        menu.exec_(self.listw.viewport().mapToGlobal(pos))
+
+    def _rename(self):
+        item = self.listw.currentItem()
+        if item is None:
+            return
+        name, _ = item.data(Qt.UserRole)
+        new, ok = QInputDialog.getText(self, "Rename", "New name:", text=name)
+        new = new.strip() if ok else ""
+        if not new or new == name:
+            return
+        src_rel = self.fs.join(self.cwd, name)
+        dest_rel = self.fs.join(self.cwd, new)
+        if self.fs.exists(dest_rel):
+            QMessageBox.warning(self, "Rename", f"'{new}' already exists.")
+            return
+        try:
+            shutil.move(self.fs.real_path(src_rel), self.fs.real_path(dest_rel))
+            self._undo = lambda: self._reverse_moves([(dest_rel, src_rel)])
+        except OSError as exc:
+            QMessageBox.warning(self, "Rename failed", str(exc))
+        self.refresh()
 
     # -- selection / clipboard ---------------------------------------------
     def _selected(self):
