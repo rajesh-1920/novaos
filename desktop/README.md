@@ -45,7 +45,7 @@ pip install -r requirements.txt        # PySide6
 | **Files**   | Browse/create/delete files & folders on the virtual drive    |
 | **Browser** | Web browser — Chromium (Qt WebEngine) if installed, else a built-in lite engine (urllib + QTextBrowser) with address bar, back/forward and search |
 | **Network** | **Sandboxed** Wi-Fi manager: a *virtual* NovaOS network you can turn on/off, connect and disconnect. It gates NovaOS apps (the Browser goes offline when it's off) but **never changes your computer's real Wi-Fi**. Shows a read-only scan of nearby networks for realism. |
-| **Monitor** | Task manager / system monitor: live CPU & RAM and a sortable process table (PID, name, CPU%, memory, user) via psutil (or `ps`), with a guarded **End Task** (your own processes only, with confirmation). |
+| **Monitor** | Task manager for NovaOS Desktop: lists the **NovaOS apps** currently running (PID, app, status, uptime) &mdash; *not* the host computer's processes. Shows NovaOS Desktop's own CPU/RAM footprint; **End Task** closes the selected app and **Switch To** focuses it. |
 | **Editor**  | Open, edit and save text files                               |
 | **Calculator** | Four-function calculator                                  |
 | **Settings**| Change wallpaper, theme (dark/light) and username           |

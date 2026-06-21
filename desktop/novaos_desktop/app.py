@@ -6,6 +6,7 @@ It provides the wallpaper (an MDI area), a bottom taskbar with a Start menu,
 running-window buttons and a live clock, a column of desktop icons, and the
 window-management glue that launches apps into draggable MDI subwindows.
 """
+import time
 from datetime import datetime
 
 from .qt import (
@@ -65,6 +66,8 @@ class NovaDesktop(QMainWindow):
         self.wallpaper_name = "Midnight"
         self._cascade = 0
         self._taskbar_buttons = {}        # AppWindow -> QPushButton
+        self._app_info = {}               # AppWindow -> {pid, name, started}
+        self._next_pid = 1                # NovaOS process ids (sandboxed)
 
         self.setWindowTitle("NovaOS Desktop")
         self.setWindowIcon(make_icon("N", "#3b6ea5"))
@@ -194,7 +197,7 @@ class NovaDesktop(QMainWindow):
         if name == "Network":
             return Network()
         if name == "Monitor":
-            return Monitor()
+            return Monitor(self)
         if name == "Editor":
             w = Editor(self.fs)
             if path:
@@ -231,6 +234,9 @@ class NovaDesktop(QMainWindow):
         sub.show()
         self.mdi.setActiveSubWindow(sub)
         self._add_taskbar_button(sub, name)
+        self._app_info[sub] = {"pid": self._next_pid, "name": name,
+                               "started": time.monotonic()}
+        self._next_pid += 1
         return widget
 
     def _add_taskbar_button(self, sub, name):
@@ -253,6 +259,42 @@ class NovaDesktop(QMainWindow):
         if btn is not None:
             self._running.removeWidget(btn)
             btn.deleteLater()
+        self._app_info.pop(sub, None)
+
+    # -- NovaOS "process" table (used by the Monitor app) -------------------
+    def running_apps(self):
+        """List the apps running inside NovaOS Desktop (not host processes)."""
+        now = time.monotonic()
+        active = self.mdi.activeSubWindow()
+        apps = []
+        for sub, info in self._app_info.items():
+            if sub.isMinimized():
+                status = "minimized"
+            elif sub is active:
+                status = "active"
+            else:
+                status = "running"
+            apps.append({"pid": info["pid"], "name": info["name"],
+                         "status": status, "uptime": now - info["started"]})
+        apps.sort(key=lambda a: a["pid"])
+        return apps
+
+    def focus_app(self, pid):
+        for sub, info in self._app_info.items():
+            if info["pid"] == pid:
+                if sub.isMinimized():
+                    sub.showNormal()
+                self.mdi.setActiveSubWindow(sub)
+                sub.widget().setFocus()
+                return True
+        return False
+
+    def close_app(self, pid):
+        for sub, info in list(self._app_info.items()):
+            if info["pid"] == pid:
+                sub.close()
+                return True
+        return False
 
     # -- settings hooks -----------------------------------------------------
     def set_wallpaper(self, name):
