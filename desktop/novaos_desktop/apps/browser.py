@@ -8,9 +8,11 @@ real pages over HTTP(S) and renders a simplified, JavaScript-free view.
 
 The lite engine is built for responsiveness:
   * pages are fetched on a background thread, so the desktop never freezes;
-  * gzip/deflate transfer encoding is requested (smaller, faster downloads);
-  * a page's images are prefetched concurrently into a cache before rendering,
-    so QTextBrowser never blocks the GUI thread fetching a resource;
+  * the text renders immediately (fast first paint); images are then fetched
+    concurrently in the background and filled in, instead of holding the page;
+  * HTTP keep-alive connection pooling via requests (when available) avoids a
+    fresh TLS handshake per resource; gzip/deflate transfers are negotiated;
+  * <script>/<style>/<svg> are stripped for much faster QTextBrowser layout;
   * visited pages and images are kept in an in-memory LRU cache, making
     back/forward and revisits instant.
 """
@@ -40,6 +42,10 @@ IMAGE_MAX_BYTES = 3_000_000
 PAGE_CACHE_MAX = 40        # LRU size for fetched HTML
 IMAGE_CACHE_MAX = 200      # LRU size for fetched images
 IMG_SRC_RE = re.compile(r'<img[^>]+src=["\']?([^"\'> ]+)', re.IGNORECASE)
+MAX_HTML = 1_500_000       # cap the document size handed to QTextBrowser
+_STRIP_RE = re.compile(
+    r"<(script|style|svg|noscript|iframe)\b.*?</\1>|<!--.*?-->",
+    re.IGNORECASE | re.DOTALL)
 
 # Detect a real engine, matching whichever Qt binding is active.
 HAVE_WEBENGINE = False
@@ -124,6 +130,43 @@ def _fetch(url: str, timeout: int, limit: int | None = None):
     return _decompress(raw, resp.headers.get("Content-Encoding", "")), resp.headers
 
 
+# Prefer a pooled requests.Session (keep-alive) when available; fall back to
+# urllib. Pooling avoids a new TCP+TLS handshake for every image on a page.
+try:
+    import requests
+    _SESSION = requests.Session()
+    _SESSION.headers["User-Agent"] = USER_AGENT
+    HAVE_REQUESTS = True
+except Exception:
+    HAVE_REQUESTS = False
+
+
+def http_text(url: str, timeout: int) -> str:
+    if HAVE_REQUESTS:
+        return _SESSION.get(url, timeout=timeout).text
+    raw, headers = _fetch(url, timeout)
+    return raw.decode(headers.get_content_charset() or "utf-8", errors="replace")
+
+
+def http_bytes(url: str, timeout: int, max_bytes: int) -> bytes:
+    if HAVE_REQUESTS:
+        r = _SESSION.get(url, timeout=timeout, stream=True)
+        try:
+            return r.raw.read(max_bytes, decode_content=True)
+        finally:
+            r.close()
+    raw, _ = _fetch(url, timeout, limit=max_bytes)
+    return raw
+
+
+def _clean_html(html: str) -> str:
+    """Strip heavy/irrelevant markup so QTextBrowser lays out fast."""
+    html = _STRIP_RE.sub(" ", html)
+    if len(html) > MAX_HTML:
+        html = html[:MAX_HTML] + "<p style='color:#8a93a8'>… (truncated)</p>"
+    return html
+
+
 class _LiteView(QTextBrowser):
     """QTextBrowser that serves images from a cache only (never blocks to fetch)."""
 
@@ -146,7 +189,8 @@ class _LiteView(QTextBrowser):
 
 class Browser(QWidget):
     # Emitted from the loader thread; delivered (queued) on the GUI thread.
-    _loaded = Signal(int, str, str)         # req_id, url, html
+    _loaded = Signal(int, str, str)         # req_id, url, html (text, first paint)
+    _images_ready = Signal(int, str, int)   # req_id, url, n_new_images
     _failed = Signal(int, str, str)         # req_id, url, error
 
     def __init__(self):
@@ -199,6 +243,7 @@ class Browser(QWidget):
             self.status.setStyleSheet("color:#8a93a8; font-size:11px;")
             layout.addWidget(self.status)
             self._loaded.connect(self._on_loaded)
+            self._images_ready.connect(self._on_images_ready)
             self._failed.connect(self._on_failed)
 
         self.navigate(HOME)
@@ -267,15 +312,14 @@ class Browser(QWidget):
 
     def _worker(self, rid: int, url: str):
         try:
-            raw, headers = _fetch(url, PAGE_TIMEOUT)
-            charset = headers.get_content_charset() or "utf-8"
-            html = raw.decode(charset, errors="replace")
-            self._prefetch_images(html, url)
-            self._loaded.emit(rid, url, html)
+            html = _clean_html(http_text(url, PAGE_TIMEOUT))
+            self._loaded.emit(rid, url, html)          # 1) paint the text now
+            n = self._prefetch_images(html, url)       # 2) fetch images (pooled)
+            self._images_ready.emit(rid, url, n)       # 3) fill them in
         except Exception as exc:                       # noqa: BLE001
             self._failed.emit(rid, url, str(exc))
 
-    def _prefetch_images(self, html: str, base_url: str):
+    def _prefetch_images(self, html: str, base_url: str) -> int:
         wanted = []
         for src in IMG_SRC_RE.findall(html):
             if src.startswith("data:"):
@@ -286,25 +330,38 @@ class Browser(QWidget):
             if len(wanted) >= MAX_IMAGES:
                 break
         if not wanted:
-            return
+            return 0
 
         def grab(u):
             try:
-                data, _ = _fetch(u, IMAGE_TIMEOUT, limit=IMAGE_MAX_BYTES)
-                return u, data
+                return u, http_bytes(u, IMAGE_TIMEOUT, IMAGE_MAX_BYTES)
             except Exception:                          # noqa: BLE001
                 return u, None
 
-        with ThreadPoolExecutor(max_workers=6) as pool:
+        n = 0
+        with ThreadPoolExecutor(max_workers=8) as pool:
             for u, data in pool.map(grab, wanted):
                 if data:
                     self._cache_image(u, data)
+                    n += 1
+        return n
 
     def _on_loaded(self, rid: int, url: str, html: str):
         if rid != self._req_id:
             return                                     # a newer request won
         self._cache_page(url, html)
         self._render(url, html)
+        self._set_status("Loaded — fetching images…")
+
+    def _on_images_ready(self, rid: int, url: str, n_new: int):
+        if rid != self._req_id:
+            return
+        if n_new:
+            # Re-render so the now-cached images appear, preserving scroll.
+            bar = self.view.verticalScrollBar()
+            pos = bar.value()
+            self._render(url, self._page_cache.get(url, ""))
+            bar.setValue(pos)
         self._set_status("Done.")
 
     def _on_failed(self, rid: int, url: str, error: str):
