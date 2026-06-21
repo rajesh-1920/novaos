@@ -24,6 +24,7 @@ import urllib.request
 import zlib
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
+from html import escape as _esc, unescape as _unesc
 
 from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel,
@@ -46,6 +47,12 @@ MAX_HTML = 1_500_000       # cap the document size handed to QTextBrowser
 _STRIP_RE = re.compile(
     r"<(script|style|svg|noscript|iframe)\b.*?</\1>|<!--.*?-->",
     re.IGNORECASE | re.DOTALL)
+# DuckDuckGo HTML-endpoint result parsing.
+_RESULT_A_RE = re.compile(r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                          re.IGNORECASE | re.DOTALL)
+_SNIPPET_RE = re.compile(r'class="result__snippet"[^>]*>(.*?)</a>',
+                         re.IGNORECASE | re.DOTALL)
+_TAG_RE = re.compile(r"<[^>]+>")
 
 # Detect a real engine, matching whichever Qt binding is active.
 HAVE_WEBENGINE = False
@@ -165,6 +172,51 @@ def _clean_html(html: str) -> str:
     if len(html) > MAX_HTML:
         html = html[:MAX_HTML] + "<p style='color:#8a93a8'>… (truncated)</p>"
     return html
+
+
+def _is_search(url: str) -> bool:
+    return url.startswith("https://html.duckduckgo.com/html")
+
+
+def _ddg_real_url(href: str) -> str:
+    """DDG result hrefs are redirects (//duckduckgo.com/l/?uddg=<real>); unwrap them."""
+    href = href.replace("&amp;", "&")
+    if href.startswith("//"):
+        href = "https:" + href
+    try:
+        params = urllib.parse.parse_qs(urllib.parse.urlparse(href).query)
+        if "uddg" in params:
+            return params["uddg"][0]
+    except Exception:                                  # noqa: BLE001
+        pass
+    return href
+
+
+def _build_results_page(url: str, raw: str) -> str:
+    """Render DuckDuckGo's HTML results as a clean, readable results page."""
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query).get("q", [""])[0]
+
+    def clean(s):
+        return _unesc(_TAG_RE.sub("", s)).strip()
+
+    titles = _RESULT_A_RE.findall(raw)
+    snippets = _SNIPPET_RE.findall(raw)
+
+    parts = ["<body style='font-family:sans-serif; color:#e5e9f0;'>",
+             f"<h2 style='color:#7aa2f7;'>Results for &ldquo;{_esc(query)}&rdquo;</h2>"]
+    if not titles:
+        parts.append("<p>No results found.</p>")
+    for i, (href, title) in enumerate(titles):
+        real = _ddg_real_url(href)
+        text = clean(title) or real
+        snippet = clean(snippets[i]) if i < len(snippets) else ""
+        parts.append(
+            "<p style='margin:0 0 14px 0;'>"
+            f"<a href='{_esc(real)}' style='font-size:15px; color:#7aa2f7;'>{_esc(text)}</a><br>"
+            f"<span style='color:#9ece6a; font-size:11px;'>{_esc(real)}</span><br>"
+            f"<span>{_esc(snippet)}</span></p>")
+    parts.append("</body>")
+    return "".join(parts)
 
 
 class _LiteView(QTextBrowser):
@@ -312,7 +364,8 @@ class Browser(QWidget):
 
     def _worker(self, rid: int, url: str):
         try:
-            html = _clean_html(http_text(url, PAGE_TIMEOUT))
+            raw = http_text(url, PAGE_TIMEOUT)
+            html = _build_results_page(url, raw) if _is_search(url) else _clean_html(raw)
             self._loaded.emit(rid, url, html)          # 1) paint the text now
             n = self._prefetch_images(html, url)       # 2) fetch images (pooled)
             self._images_ready.emit(rid, url, n)       # 3) fill them in
