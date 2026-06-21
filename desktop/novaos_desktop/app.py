@@ -22,6 +22,7 @@ from .apps.files import Files
 from .apps.editor import Editor
 from .apps.browser import Browser
 from .apps.network import Network, short_status
+from .apps.monitor import Monitor
 from .apps.calculator import Calculator
 from .apps.settings import Settings
 from .apps.about import About
@@ -33,6 +34,7 @@ APP_SPECS = {
     "Files":      ("F", "#3b6ea5"),
     "Browser":    ("B", "#2563eb"),
     "Network":    ("N", "#0d9488"),
+    "Monitor":    ("M", "#e11d48"),
     "Editor":     ("E", "#8a5cf6"),
     "Calculator": ("C", "#c2410c"),
     "Settings":   ("S", "#475569"),
@@ -44,6 +46,7 @@ DEFAULT_SIZES = {
     "Files":      QSize(560, 430),
     "Browser":    QSize(860, 580),
     "Network":    QSize(540, 480),
+    "Monitor":    QSize(700, 480),
     "Editor":     QSize(640, 470),
     "Calculator": QSize(300, 430),
     "Settings":   QSize(440, 380),
@@ -157,7 +160,7 @@ class NovaDesktop(QMainWindow):
         col = QVBoxLayout(self.icons)
         col.setContentsMargins(10, 12, 10, 12)
         col.setSpacing(14)
-        for name in ("Terminal", "Files", "Browser", "Network", "Editor", "About"):
+        for name in ("Terminal", "Files", "Browser", "Network", "Monitor", "Editor", "About"):
             letter, color = APP_SPECS[name]
             btn = QToolButton()
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
@@ -190,6 +193,8 @@ class NovaDesktop(QMainWindow):
             return Browser()
         if name == "Network":
             return Network()
+        if name == "Monitor":
+            return Monitor()
         if name == "Editor":
             w = Editor(self.fs)
             if path:

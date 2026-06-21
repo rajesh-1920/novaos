@@ -1,3 +1,12 @@
-# NovaOS Desktop runtime dependency.
-# (Already installed on this machine; listed for portability.)
+# NovaOS Desktop runtime dependencies.
+# (Already present on this machine; listed for portability.)
+
+# Qt binding: PySide6 OR PyQt5 (the app auto-detects whichever is installed).
 PySide6>=6.5
+
+# Optional: nicer/faster process data for the Monitor app.
+# Without it, Monitor falls back to the `ps` command.
+psutil>=5.9
+
+# Optional: HTTP connection pooling for the Browser (falls back to urllib).
+requests>=2.28

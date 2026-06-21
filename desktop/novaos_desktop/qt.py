@@ -20,6 +20,7 @@ try:
         QFormLayout, QMdiArea, QMdiSubWindow, QFrame, QPushButton, QToolButton,
         QLabel, QMenu, QPlainTextEdit, QLineEdit, QListWidget, QListWidgetItem,
         QComboBox, QInputDialog, QMessageBox, QTextBrowser,
+        QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     )
     BINDING = "PySide6"
 except ImportError:  # fall back to PyQt5
@@ -35,6 +36,7 @@ except ImportError:  # fall back to PyQt5
         QFormLayout, QMdiArea, QMdiSubWindow, QFrame, QPushButton, QToolButton,
         QLabel, QMenu, QPlainTextEdit, QLineEdit, QListWidget, QListWidgetItem,
         QComboBox, QInputDialog, QMessageBox, QTextBrowser,
+        QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     )
     BINDING = "PyQt5"
 

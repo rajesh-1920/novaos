@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NovaOS Project Report</title>
+<style>
+  @page { size: A4; margin: 2cm 2cm 1.6cm 2cm; }
+  body { font-family: "Liberation Serif", "Times New Roman", serif;
+         font-size: 11.5pt; line-height: 1.38; text-align: justify; color: #111; }
+  h1 { font-size: 16pt; line-height: 1.25; margin: 0 0 2pt 0; }
+  .meta { margin: 0 0 4pt 0; }
+  .meta div { font-size: 11pt; }
+  hr { border: none; border-top: 1px solid #000; margin: 8pt 0 12pt 0; }
+  h2 { font-size: 12.5pt; margin: 12pt 0 4pt 0; }
+  p { margin: 4pt 0; }
+  ol, ul { margin: 3pt 0 3pt 0; padding-left: 22pt; }
+  li { margin: 1.5pt 0; }
+  .sub { font-style: italic; margin: 6pt 0 1pt 0; }
+  a { color: #1a3b8b; text-decoration: none; }
+  code { font-family: "Liberation Mono", monospace; font-size: 10pt; }
+  .refs p { margin: 2pt 0; font-size: 10.5pt; }
+</style>
+</head>
+<body>
+
+<h1>NovaOS: A Bare-Metal x86_64 Kernel with a Companion
+Simulated-Desktop Environment</h1>
+<div class="meta">
+  <div>CIT 322 :: Operating System Sessional</div>
+  <div>Name: <b>Rajesh Biswas</b></div>
+  <div>ID: <b>2002060</b></div>
+  <div>Reg: <b>09577</b></div>
+  <div>Semester: <b>6th</b></div>
+</div>
+<hr>
+
+<h2>1. Introduction</h2>
+<p>This project demonstrates core Operating System principles through the
+ground-up development of <b>NovaOS</b>, which has two complementary parts. The
+first is a <b>bare-metal kernel</b> for the x86_64 architecture, written in C
+and booted by the modern <b>Limine</b> bootloader. It boots straight into
+64-bit long mode, brings up a linear-framebuffer text console and a 16550 UART
+serial debug log, and drops into an interactive command shell driven by a
+polled PS/2 keyboard. The second is <b>NovaOS Desktop</b>, a companion
+application written in Python and PyQt5 that simulates an operating-system
+desktop environment &mdash; wallpaper, taskbar, start menu and draggable
+windows &mdash; populated with a suite of built-in applications.</p>
+<p>The kernel is compiled with <b>clang</b> acting as a cross-compiler (so no
+GCC cross-toolchain has to be built), linked with GNU&nbsp;ld using a
+higher-half link script, and mastered into a hybrid BIOS/UEFI ISO that runs
+under QEMU. Every subsystem is a small, self-contained module so the code stays
+readable and easy to maintain. Together the two parts illustrate OS concepts
+from the boot handoff and device drivers up to a usable graphical environment.</p>
+
+<h2>2. Objectives</h2>
+<ol>
+<li>To understand the x86_64 boot process and CPU bring-up by building a
+Limine-booted, higher-half kernel that reaches 64-bit long mode.</li>
+<li>To implement low-level device drivers: a linear-framebuffer text console
+(bitmap font, scrolling), a 16550 UART serial driver, and a polled PS/2
+keyboard.</li>
+<li>To provide a small freestanding C runtime (memcpy/memset/printf) with no
+libc, and an interactive in-kernel command shell.</li>
+<li>To design a clean, reproducible build (clang + GNU&nbsp;ld + a single
+Makefile + bootable ISO) that is testable in QEMU.</li>
+<li>To build a companion graphical desktop that models OS concepts
+(windowing, apps, a sandboxed filesystem, networking) in user space.</li>
+<li>To keep the desktop's network/Wi-Fi control sandboxed so the simulated OS
+can never disturb the host system.</li>
+</ol>
+
+<h2>3. Problem Statement</h2>
+<p>Operating-system internals &mdash; the boot handoff, the memory layout,
+device drivers and the shell &mdash; are often taught only in theory and feel
+inaccessible because real systems are enormous and their toolchains are
+intimidating. At the same time, graphical desktop environments hide how an OS
+presents processes, files and devices to the user. There is a need for a small,
+readable kernel that a student can build and boot in minutes, paired with an
+approachable graphical environment that makes OS concepts (windows, a shell, a
+sandboxed filesystem, live network state) visible and interactive without ever
+putting the host machine at risk.</p>
+
+<h2>4. Related Work</h2>
+<ol>
+<li>Educational kernels such as MIT&nbsp;<i>xv6</i> and the OSDev
+&ldquo;Bare&nbsp;Bones&rdquo; tutorials teach kernel fundamentals, but they
+often target older toolchains and stop short of a usable interactive shell.</li>
+<li><i>Writing an OS in Rust</i> (P. Oppermann) is an excellent guided kernel,
+but it is Rust-specific; NovaOS uses the more widely taught C path.</li>
+<li>The <b>Limine</b> boot protocol hands the kernel a ready framebuffer and a
+higher-half mapping, removing much of the boilerplate that GRUB/Multiboot
+require.</li>
+<li>Web-desktop projects (e.g. daedalOS) simulate an OS UI in a browser;
+NovaOS&nbsp;Desktop is instead a native PyQt5 application tied to a real kernel
+project.</li>
+<li>System tools such as <i>htop</i> or GNOME System Monitor expose host state
+directly; NovaOS&nbsp;Desktop deliberately sandboxes its controls so it never
+changes the host configuration.</li>
+</ol>
+
+<h2>5. Scope</h2>
+<p>NovaOS targets the <b>x86_64</b> architecture only. The kernel boots through
+Limine on both BIOS and UEFI and currently provides framebuffer + serial output
+and an interactive shell; interrupts, virtual memory and multitasking are
+planned milestones rather than present features. NovaOS&nbsp;Desktop runs on a
+standard Linux desktop with Python&nbsp;3 and a Qt binding (PyQt5, or PySide6
+through a compatibility shim). Its file operations are confined to a sandboxed
+virtual drive, and its Wi-Fi manager is virtual: it reads nearby networks
+read-only but never alters the host's real connection.</p>
+
+<h2>6. Methodology</h2>
+<p class="sub">Kernel</p>
+<ol>
+<li>Architecture: x86_64, loaded in the higher half at 0xffffffff80000000.</li>
+<li>Bootloader: Limine, packaged as a hybrid BIOS/UEFI ISO (xorriso).</li>
+<li>Language: freestanding C with minimal inline assembly.</li>
+<li>Toolchain: clang (cross-compile via a bare-metal target triple), GNU&nbsp;ld,
+a single Makefile.</li>
+<li>Drivers: linear-framebuffer console (8&times;8 font), 16550 UART serial,
+polled PS/2 keyboard.</li>
+<li>Runtime: freestanding string/printf helpers and an interactive shell.</li>
+<li>Testing: QEMU (<code>qemu-system-x86_64</code>).</li>
+</ol>
+<p class="sub">NovaOS Desktop (companion application)</p>
+<ol>
+<li>Language / UI: Python&nbsp;3 with PyQt5 (PySide6 fallback via a binding shim).</li>
+<li>Windowing: an MDI workspace (draggable/resizable windows), taskbar and
+start menu, with a live clock and a Wi-Fi indicator.</li>
+<li>Applications: Terminal, Files, Web&nbsp;Browser, Network/Wi-Fi, Text&nbsp;
+Editor, Calculator, Settings and About.</li>
+<li>Filesystem: a sandboxed virtual drive (<code>~/.novaos_desktop/drive</code>).</li>
+<li>Browser: a lite engine (requests/urllib + QTextBrowser) with automatic
+upgrade to Qt&nbsp;WebEngine (Chromium) when it is installed.</li>
+<li>Networking: read-only <code>nmcli</code> scanning plus a virtual,
+sandboxed in-app Wi-Fi state.</li>
+<li>Engineering: Git/GitHub, with feature work on a <code>dev</code> branch
+merged into <code>main</code> via pull request.</li>
+</ol>
+
+<h2>7. Design Principles</h2>
+<ol>
+<li>Small, single-purpose modules, each with a clear header; only one file ever
+touches the boot protocol, so the rest of the kernel is boot-agnostic.</li>
+<li>Freestanding and dependency-light: the kernel ships only the libc routines
+it actually needs, and the desktop has zero image assets (its icons are
+painted at runtime).</li>
+<li>A fast, readable build: using clang as the cross-compiler avoids
+bootstrapping a GCC toolchain, and the whole kernel builds from one Makefile.</li>
+<li>Responsiveness and safety in the desktop: network and page I/O run on
+background threads, and the Wi-Fi manager is sandboxed so it can never change
+the host's real networking.</li>
+</ol>
+
+<h2>8. Limitations</h2>
+<ol>
+<li>The kernel is x86_64-only and currently has no interrupts, paging/virtual
+memory, multitasking or persistent filesystem (all planned milestones).</li>
+<li>The desktop Browser's lite engine renders a simplified, JavaScript-free
+view; full CSS/JS pages require installing Qt&nbsp;WebEngine, after which the
+Browser switches to Chromium automatically.</li>
+<li>NovaOS&nbsp;Desktop is a <i>simulation</i> of an OS desktop, not a real
+operating system, and depends on a host Linux machine with Qt.</li>
+</ol>
+
+<h2>9. Future Plans</h2>
+<p>For the kernel: a GDT/IDT with interrupt and exception handling, a PIT/APIC
+timer, a physical and virtual memory manager, then preemptive multitasking and
+a simple filesystem. For NovaOS&nbsp;Desktop: browser tabs and bookmarks,
+persistent settings, and additional applications such as an image viewer and a
+process/system monitor.</p>
+
+<h2>10. Conclusion</h2>
+<p>We can conclude that the project results in a working bare-metal x86_64
+kernel that boots through Limine into 64-bit mode, prints to a framebuffer
+console and a serial port, and accepts commands through an interactive shell
+&mdash; verified end-to-end in QEMU. Its companion, NovaOS&nbsp;Desktop,
+provides an approachable graphical environment that models operating-system
+concepts &mdash; windowing, a shell, a sandboxed filesystem and networking
+&mdash; in user space, while a sandboxed Wi-Fi manager keeps the host system
+untouched. Together they make core OS ideas, from the boot handoff to a usable
+user environment, concrete, buildable and safe to explore.</p>
+
+<h2>11. References</h2>
+<div class="refs">
+<p>[1] Limine bootloader &mdash; https://github.com/limine-bootloader/limine</p>
+<p>[2] OSDev Wiki, Limine Bare Bones &mdash; https://wiki.osdev.org/Limine_Bare_Bones</p>
+<p>[3] P. Oppermann, Writing an OS in Rust &mdash; https://os.phil-opp.com/</p>
+<p>[4] MIT xv6 &mdash; https://pdos.csail.mit.edu/6.828/</p>
+<p>[5] Qt for Python (PyQt5 / PySide6) &mdash; https://doc.qt.io/qtforpython/</p>
+<p>[6] QEMU &mdash; https://www.qemu.org/</p>
+<p>[7] font8x8, public-domain bitmap font &mdash; https://github.com/dhepper/font8x8</p>
+<p>[8] Project repository &mdash; https://github.com/rajesh-1920/novaos</p>
+</div>
+
+</body>
+</html>
