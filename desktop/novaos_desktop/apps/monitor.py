@@ -15,6 +15,7 @@ import time
 from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QHeaderView, QAbstractItemView, QMessageBox, QTimer, Qt,
+    QShortcut, QKeySequence,
 )
 
 try:
@@ -68,7 +69,11 @@ class Monitor(QWidget):
         controls = QHBoxLayout()
         self.end_btn = QPushButton("End Task")
         self.end_btn.clicked.connect(self._end_task)
-        self.end_btn.setShortcut("Delete")
+        self.end_btn.setToolTip("End Task (Delete)")
+        # Scope Delete to this app so it doesn't fire while typing elsewhere.
+        del_sc = QShortcut(QKeySequence("Delete"), self)
+        del_sc.setContext(Qt.WidgetWithChildrenShortcut)
+        del_sc.activated.connect(self._end_task)
         self.focus_btn = QPushButton("Switch To")
         self.focus_btn.clicked.connect(self._switch_to)
         self.refresh_btn = QPushButton("Refresh")
