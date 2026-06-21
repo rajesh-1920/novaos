@@ -45,7 +45,8 @@ class About(QWidget):
             "It is a companion to the NovaOS bare-metal kernel: this app mimics\n"
             "an OS desktop (windows, taskbar, start menu, apps) as a normal\n"
             "desktop program.\n\n"
-            "Built-in apps: Terminal, Files, Editor, Calculator, Settings, About.\n\n"
+            "Built-in apps: Terminal, Files, Browser, Network, Editor,\n"
+            "Calculator, Settings, About.\n\n"
             "License: MIT"
         )
         desc.setWordWrap(True)

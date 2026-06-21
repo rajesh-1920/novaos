@@ -11,7 +11,7 @@ from datetime import datetime
 from .qt import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMdiArea, QFrame,
     QPushButton, QToolButton, QLabel, QMenu, QApplication,
-    Qt, QTimer, QSize, QPoint,
+    Qt, QTimer, QSize, QPoint, Signal,
 )
 
 from .icons import make_icon
@@ -20,6 +20,8 @@ from .window import AppWindow
 from .apps.terminal import Terminal
 from .apps.files import Files
 from .apps.editor import Editor
+from .apps.browser import Browser
+from .apps.network import Network, short_status
 from .apps.calculator import Calculator
 from .apps.settings import Settings
 from .apps.about import About
@@ -29,6 +31,8 @@ from . import __version__
 APP_SPECS = {
     "Terminal":   ("T", "#2d7d46"),
     "Files":      ("F", "#3b6ea5"),
+    "Browser":    ("B", "#2563eb"),
+    "Network":    ("N", "#0d9488"),
     "Editor":     ("E", "#8a5cf6"),
     "Calculator": ("C", "#c2410c"),
     "Settings":   ("S", "#475569"),
@@ -38,6 +42,8 @@ APP_SPECS = {
 DEFAULT_SIZES = {
     "Terminal":   QSize(660, 430),
     "Files":      QSize(560, 430),
+    "Browser":    QSize(860, 580),
+    "Network":    QSize(540, 480),
     "Editor":     QSize(640, 470),
     "Calculator": QSize(300, 430),
     "Settings":   QSize(440, 380),
@@ -46,6 +52,8 @@ DEFAULT_SIZES = {
 
 
 class NovaDesktop(QMainWindow):
+    _net_status = Signal(str)
+
     def __init__(self, fs):
         super().__init__()
         self.fs = fs
@@ -82,6 +90,13 @@ class NovaDesktop(QMainWindow):
         self._clock_timer.start(1000)
         self._tick_clock()
 
+        # Live network/Wi-Fi indicator (polled off the GUI thread).
+        self._net_status.connect(self.net_btn.setText)
+        self._net_timer = QTimer(self)
+        self._net_timer.timeout.connect(self._poll_net)
+        self._net_timer.start(2000)
+        self._poll_net()
+
         QApplication.instance().setStyleSheet(theme_qss(self.theme_name))
 
     # -- taskbar ------------------------------------------------------------
@@ -104,6 +119,12 @@ class NovaDesktop(QMainWindow):
         running_container.setLayout(self._running)
         row.addWidget(running_container, 1)
 
+        self.net_btn = QPushButton("Wi-Fi")
+        self.net_btn.setObjectName("NetButton")
+        self.net_btn.setToolTip("Network — click to manage Wi-Fi")
+        self.net_btn.clicked.connect(lambda: self.launch_app("Network"))
+        row.addWidget(self.net_btn)
+
         self.clock = QLabel()
         self.clock.setObjectName("Clock")
         self.clock.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -116,7 +137,7 @@ class NovaDesktop(QMainWindow):
             act = menu.addAction(make_icon(letter, color), name)
             act.triggered.connect(lambda _=False, n=name: self.launch_app(n))
         menu.addSeparator()
-        quit_act = menu.addAction("Log out")
+        quit_act = menu.addAction("Power off")
         quit_act.triggered.connect(self.close)
         # pop up just above the Start button
         pos = self.start_btn.mapToGlobal(QPoint(0, 0))
@@ -125,29 +146,36 @@ class NovaDesktop(QMainWindow):
     def _tick_clock(self):
         self.clock.setText(datetime.now().strftime("%a %d %b   %H:%M:%S"))
 
+    def _poll_net(self):
+        # Virtual state -> instant; no subprocess, safe to read on the GUI thread.
+        self._net_status.emit(short_status())
+
     # -- desktop icons ------------------------------------------------------
     def _build_desktop_icons(self):
         self.icons = QWidget(self.mdi.viewport())
         self.icons.setObjectName("DesktopIcons")
         col = QVBoxLayout(self.icons)
-        col.setContentsMargins(12, 12, 12, 12)
-        col.setSpacing(16)
-        for name in ("Terminal", "Files", "Editor", "About"):
+        col.setContentsMargins(10, 12, 10, 12)
+        col.setSpacing(14)
+        for name in ("Terminal", "Files", "Browser", "Network", "Editor", "About"):
             letter, color = APP_SPECS[name]
             btn = QToolButton()
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             btn.setIcon(make_icon(letter, color))
-            btn.setIconSize(QSize(46, 46))
+            btn.setIconSize(QSize(44, 44))
             btn.setText(name)
+            btn.setFixedWidth(96)                 # room for the full label
             btn.setStyleSheet(
-                "QToolButton { color: white; background: transparent; border: none; }"
+                "QToolButton { color: white; background: transparent; border: none;"
+                " padding: 4px; }"
                 "QToolButton:hover { background: rgba(255,255,255,0.14); border-radius: 8px; }"
             )
             btn.clicked.connect(lambda _=False, n=name: self.launch_app(n))
-            col.addWidget(btn)
-        col.addStretch(1)
-        self.icons.move(0, 0)
-        self.icons.resize(110, 460)
+            col.addWidget(btn, 0, Qt.AlignHCenter)
+        self.icons.move(8, 8)
+        # Size the panel to its content so each button keeps its full height and
+        # the label under the icon is never clipped.
+        self.icons.resize(self.icons.sizeHint())
         self.icons.show()
         self.icons.raise_()
 
@@ -158,6 +186,10 @@ class NovaDesktop(QMainWindow):
                             lambda: self.username)
         if name == "Files":
             return Files(self.fs, lambda p: self.launch_app("Editor", path=p))
+        if name == "Browser":
+            return Browser()
+        if name == "Network":
+            return Network()
         if name == "Editor":
             w = Editor(self.fs)
             if path:
