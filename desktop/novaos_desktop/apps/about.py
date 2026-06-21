@@ -46,7 +46,7 @@ class About(QWidget):
             "an OS desktop (windows, taskbar, start menu, apps) as a normal\n"
             "desktop program.\n\n"
             "Built-in apps: Terminal, Files, Browser, Network, Monitor,\n"
-            "Camera, Editor, Calculator, Settings, About.\n\n"
+            "Camera, Viewer, Editor, Calculator, Settings, About.\n\n"
             "License: MIT"
         )
         desc.setWordWrap(True)

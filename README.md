@@ -70,8 +70,8 @@ Alongside the kernel, this repo ships **NovaOS Desktop** — a *simulated* OS
 desktop that runs as an ordinary application (Python + Qt): wallpaper, taskbar,
 Start menu, draggable windows, and built-in apps including a web Browser and a
 sandboxed Wi-Fi manager (Terminal, Files, Browser, Network, Monitor, Camera,
-Editor, Calculator, Settings, About). It's a friendly GUI companion to the
-bare-metal kernel (it is **not** a virtual machine).
+Viewer, Editor, Calculator, Settings, About). It's a friendly GUI companion to
+the bare-metal kernel (it is **not** a virtual machine).
 
 ```sh
 cd desktop

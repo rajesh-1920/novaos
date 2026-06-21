@@ -47,6 +47,7 @@ pip install -r requirements.txt        # PySide6
 | **Network** | **Sandboxed** Wi-Fi manager: a *virtual* NovaOS network you can turn on/off, connect and disconnect. It gates NovaOS apps (the Browser goes offline when it's off) but **never changes your computer's real Wi-Fi**. Shows a read-only scan of nearby networks for realism. |
 | **Monitor** | Task manager for NovaOS Desktop: lists the **NovaOS apps** currently running (PID, app, status, uptime) &mdash; *not* the host computer's processes. Shows NovaOS Desktop's own CPU/RAM footprint; **End Task** closes the selected app and **Switch To** focuses it. |
 | **Camera**  | Webcam app: live preview and snapshots saved into the sandboxed `Pictures/` folder. Needs an OpenCV backend &mdash; `sudo apt install python3-opencv` or `pip install opencv-python-headless`. |
+| **Viewer**  | Image viewer: renders PNG/JPEG/GIF/BMP/etc. (Qt's built-in loaders). Image files open here automatically from Files &mdash; the text Editor would otherwise show their raw bytes. |
 | **Editor**  | Open, edit and save text files                               |
 | **Calculator** | Four-function calculator                                  |
 | **Settings**| Change wallpaper, theme (dark/light) and username           |
@@ -76,7 +77,7 @@ desktop/
     ├── icons.py               # painted app icons (no image assets)
     ├── style.py               # themes + wallpaper brushes
     ├── filesystem.py          # NovaFS sandboxed virtual drive
-    └── apps/                  # terminal, files, browser, network, monitor, camera, editor, calculator, settings, about
+    └── apps/                  # terminal, files, browser, network, monitor, camera, viewer, editor, calculator, settings, about
 ```
 
 ## Developer notes

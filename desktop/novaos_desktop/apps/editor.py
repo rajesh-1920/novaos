@@ -37,10 +37,21 @@ class Editor(QWidget):
 
     # -- public -------------------------------------------------------------
     def open_path(self, path):
-        if self.fs.is_file(path):
-            self.text.setPlainText(self.fs.read(path))
-            self.path = path
-            self.status.setText("/" + path)
+        if not self.fs.is_file(path):
+            return
+        with open(self.fs.real_path(path), "rb") as fh:
+            raw = fh.read()
+        if b"\x00" in raw[:8192]:            # looks binary
+            self.text.setPlainText(
+                f"[binary file - {len(raw)} bytes]\n\n"
+                "This file is not text. Images open in the Image Viewer "
+                "(double-click them in Files).")
+            self.path = None
+            self.status.setText("/" + path + "  (binary, read-only)")
+            return
+        self.text.setPlainText(raw.decode("utf-8", errors="replace"))
+        self.path = path
+        self.status.setText("/" + path)
 
     # -- actions ------------------------------------------------------------
     def _new(self):
