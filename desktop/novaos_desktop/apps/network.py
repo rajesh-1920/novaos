@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 rajesh_1920
-"""Network - a real Wi-Fi manager for NovaOS Desktop, backed by nmcli.
+"""Network - a SANDBOXED Wi-Fi manager for NovaOS Desktop.
 
-This actually controls the host's networking through NetworkManager (nmcli):
-show status, scan for Wi-Fi networks, connect (with a password prompt for
-secured ones), disconnect, and toggle the radio. All nmcli calls run on
-background threads so the desktop never freezes; results come back via signals.
+Important: this manages a *virtual* network that belongs to NovaOS Desktop only.
+Turning Wi-Fi off / connecting / disconnecting here changes an in-memory state
+inside the app and gates NovaOS apps (e.g. the Browser goes offline) — it does
+**not** touch your computer's real Wi-Fi radio or connection.
 
-If nmcli is unavailable the app shows a clear message instead.
+For a realistic network list it performs a *read-only* scan via nmcli (which
+never changes host state); if nmcli is unavailable it shows a few demo networks.
+When NovaOS is "online", the Browser uses your computer's real internet.
 """
 import shutil
 import subprocess
@@ -15,174 +17,168 @@ import threading
 
 from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QListWidget,
-    QListWidgetItem, QInputDialog, QLineEdit, QMessageBox, QTimer, Qt, Signal,
+    QListWidgetItem, Qt, Signal,
 )
 
 HAVE_NMCLI = shutil.which("nmcli") is not None
 
+DEMO_NETWORKS = [
+    {"ssid": "NovaNet", "signal": 92, "security": "WPA2"},
+    {"ssid": "NovaNet-5G", "signal": 78, "security": "WPA2"},
+    {"ssid": "CoffeeShop", "signal": 54, "security": "Open"},
+    {"ssid": "Guest", "signal": 38, "security": "Open"},
+]
 
-# --- nmcli helpers (no Qt; safe to call from worker threads) ---------------
-def _run(args, timeout=20):
+
+# --- read-only host helpers (never change host state) -----------------------
+def _run(args, timeout=15):
     try:
         p = subprocess.run(["nmcli", *args], capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout, p.stderr
-    except FileNotFoundError:
-        return 127, "", "nmcli not found"
-    except subprocess.TimeoutExpired:
-        return 124, "", "operation timed out"
-    except Exception as exc:                            # noqa: BLE001
-        return 1, "", str(exc)
+    except Exception:                                   # noqa: BLE001
+        return 1, "", "nmcli error"
 
 
 def _split_terse(line):
-    """Split an `nmcli -t` line, honouring its '\\:' / '\\\\' escaping."""
     fields, cur, i = [], [], 0
     while i < len(line):
         c = line[i]
         if c == "\\" and i + 1 < len(line):
-            cur.append(line[i + 1])
-            i += 2
-            continue
+            cur.append(line[i + 1]); i += 2; continue
         if c == ":":
-            fields.append("".join(cur))
-            cur = []
-            i += 1
-            continue
-        cur.append(c)
-        i += 1
+            fields.append("".join(cur)); cur = []; i += 1; continue
+        cur.append(c); i += 1
     fields.append("".join(cur))
     return fields
 
 
-def _wifi_device():
-    rc, out, _ = _run(["-t", "-f", "DEVICE,TYPE,STATE", "device"])
+def real_current_ssid():
+    """Read (only) the host's currently-connected Wi-Fi SSID, if any."""
+    if not HAVE_NMCLI:
+        return None
+    _, out, _ = _run(["-t", "-f", "ACTIVE,SSID", "dev", "wifi"])
     for line in out.splitlines():
         f = _split_terse(line)
-        if len(f) >= 3 and f[1] == "wifi":             # 'wifi', not 'wifi-p2p'
-            return f[0], f[2]
-    return None, None
+        if len(f) >= 2 and f[0] == "yes" and f[1]:
+            return f[1]
+    return None
 
 
-def wifi_status():
-    s = {"available": HAVE_NMCLI, "radio": False, "state": "", "connectivity": "",
-         "ssid": None, "ip": None, "device": None}
+def scan_networks():
+    """Read-only list of nearby Wi-Fi networks (demo list if nmcli is absent)."""
     if not HAVE_NMCLI:
-        return s
-
-    _, out, _ = _run(["radio", "wifi"])
-    s["radio"] = "enabled" in out
-
-    _, out, _ = _run(["-t", "-f", "STATE,CONNECTIVITY", "general"])
-    lines = out.strip().splitlines()
-    if lines:
-        f = _split_terse(lines[0])
-        if len(f) >= 2:
-            s["state"], s["connectivity"] = f[0], f[1]
-
-    dev, _state = _wifi_device()
-    s["device"] = dev
-    if dev:
-        _, out, _ = _run(["-t", "-f", "ACTIVE,SSID", "dev", "wifi"])
-        for line in out.splitlines():
-            f = _split_terse(line)
-            if len(f) >= 2 and f[0] == "yes":
-                s["ssid"] = f[1] or None
-                break
-        _, out, _ = _run(["-t", "-f", "IP4.ADDRESS", "device", "show", dev])
-        for line in out.splitlines():
-            f = _split_terse(line)
-            if len(f) >= 2 and f[1]:
-                s["ip"] = f[1].split("/")[0]
-                break
-    return s
-
-
-def wifi_scan():
-    rc, out, _ = _run(["-t", "-f", "IN-USE,SIGNAL,SECURITY,SSID", "dev", "wifi", "list"])
+        return list(DEMO_NETWORKS)
+    _, out, _ = _run(["-t", "-f", "SIGNAL,SECURITY,SSID", "dev", "wifi", "list"])
     best = {}
     for line in out.splitlines():
         f = _split_terse(line)
-        if len(f) < 4:
+        if len(f) < 3:
             continue
-        ssid = f[3].strip()
+        ssid = f[2].strip()
         if not ssid:
-            continue                                   # hidden network
+            continue
         try:
-            signal = int(f[1])
+            signal = int(f[0])
         except ValueError:
             signal = 0
-        security = f[2].strip() or "Open"
-        in_use = f[0].strip() == "*"
-        prev = best.get(ssid)
-        if prev is None or signal > prev["signal"]:
-            best[ssid] = {"ssid": ssid, "signal": signal,
-                          "security": security, "in_use": in_use}
-        elif in_use:
-            best[ssid]["in_use"] = True
-    nets = list(best.values())
-    nets.sort(key=lambda n: (not n["in_use"], -n["signal"]))
+        security = f[1].strip() or "Open"
+        if ssid not in best or signal > best[ssid]["signal"]:
+            best[ssid] = {"ssid": ssid, "signal": signal, "security": security}
+    nets = list(best.values()) or list(DEMO_NETWORKS)
+    nets.sort(key=lambda n: -n["signal"])
     return nets
 
 
-def wifi_connect(ssid, password=None):
-    args = ["dev", "wifi", "connect", ssid]
-    if password:
-        args += ["password", password]
-    rc, out, err = _run(args, timeout=45)
-    msg = (out or err).strip() or ("connected" if rc == 0 else "failed")
-    return rc == 0, msg
+# --- virtual NovaOS network state (in-memory; affects NovaOS apps only) -----
+_state = {"wifi_on": True, "ssid": None, "online": False}
+_initialized = False
 
 
-def wifi_disconnect():
-    dev, _ = _wifi_device()
-    if not dev:
-        return False, "no Wi-Fi device"
-    rc, out, err = _run(["dev", "disconnect", dev])
-    return rc == 0, (out or err).strip() or ("disconnected" if rc == 0 else "failed")
+def _ensure_init():
+    global _initialized
+    if _initialized:
+        return
+    _initialized = True
+    # Default the virtual connection to mirror the host's current SSID (display
+    # only), so NovaOS starts "online" and the Browser works out of the box.
+    _state["ssid"] = real_current_ssid() or "NovaNet"
+    _state["wifi_on"] = True
+    _state["online"] = True
 
 
-def wifi_set_radio(on):
-    rc, out, err = _run(["radio", "wifi", "on" if on else "off"])
-    return rc == 0, (err or out).strip()
+def state():
+    _ensure_init()
+    return dict(_state)
+
+
+def is_online():
+    """Whether NovaOS Desktop considers itself connected (gates the Browser)."""
+    _ensure_init()
+    return _state["wifi_on"] and _state["online"] and bool(_state["ssid"])
+
+
+def set_wifi_on(on):
+    _ensure_init()
+    _state["wifi_on"] = bool(on)
+    _state["online"] = bool(on and _state["ssid"])
+    return True
+
+
+def vconnect(ssid):
+    _ensure_init()
+    _state["wifi_on"] = True
+    _state["ssid"] = ssid
+    _state["online"] = True
+    return True
+
+
+def vdisconnect():
+    _ensure_init()
+    _state["online"] = False
+    return True
 
 
 def short_status():
-    """Compact one-liner for the taskbar indicator."""
-    if not HAVE_NMCLI:
-        return "No network"
-    s = wifi_status()
-    if not s["radio"] and not s["ssid"]:
+    """Compact taskbar string, reflecting the VIRTUAL NovaOS state."""
+    s = state()
+    if not s["wifi_on"]:
         return "Wi-Fi: off"
-    if s["ssid"]:
-        return s["ssid"] + ("" if s["connectivity"] == "full" else " (limited)")
-    if s["connectivity"] == "full":
-        return "Online"
+    if s["online"] and s["ssid"]:
+        return s["ssid"]
     return "Offline"
 
 
 # --- the Network app widget ------------------------------------------------
 class Network(QWidget):
-    _status_ready = Signal(dict)
     _scan_ready = Signal(list)
-    _action_ready = Signal(bool, str)
 
     def __init__(self):
         super().__init__()
+        self._nets = []
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
-        header = QHBoxLayout()
-        self.status_label = QLabel("Wi-Fi")
+        self.status_label = QLabel()
         self.status_label.setWordWrap(True)
-        header.addWidget(self.status_label, 1)
-        self.radio_btn = QPushButton("Wi-Fi On/Off")
+        layout.addWidget(self.status_label)
+
+        note = QLabel("Sandboxed: this only affects NovaOS Desktop — "
+                      "your computer's real Wi-Fi is never changed.")
+        note.setWordWrap(True)
+        note.setStyleSheet("color:#8a93a8; font-size:11px;")
+        layout.addWidget(note)
+
+        controls = QHBoxLayout()
+        self.radio_btn = QPushButton()
         self.radio_btn.clicked.connect(self._toggle_radio)
         self.refresh_btn = QPushButton("Refresh")
-        self.refresh_btn.clicked.connect(self.refresh)
-        header.addWidget(self.radio_btn)
-        header.addWidget(self.refresh_btn)
-        layout.addLayout(header)
+        self.refresh_btn.clicked.connect(self._rescan)
+        controls.addWidget(self.radio_btn)
+        controls.addWidget(self.refresh_btn)
+        controls.addStretch(1)
+        layout.addLayout(controls)
 
         self.listw = QListWidget()
         self.listw.itemDoubleClicked.connect(lambda _i: self._connect())
@@ -198,99 +194,62 @@ class Network(QWidget):
         actions.addStretch(1)
         layout.addLayout(actions)
 
-        self._status_ready.connect(self._on_status)
         self._scan_ready.connect(self._on_scan)
-        self._action_ready.connect(self._on_action)
+        self._render_status()
+        self._rescan()
 
-        if not HAVE_NMCLI:
+    # -- status / list ------------------------------------------------------
+    def _render_status(self):
+        s = state()
+        if not s["wifi_on"]:
+            self.status_label.setText("NovaOS Wi-Fi: off")
+        elif s["online"] and s["ssid"]:
             self.status_label.setText(
-                "NetworkManager (nmcli) is not available, so Wi-Fi can't be "
-                "managed here. Your existing connection still works.")
-            for b in (self.radio_btn, self.refresh_btn, self.connect_btn, self.disconnect_btn):
-                b.setEnabled(False)
-            return
+                f"NovaOS Wi-Fi: on   ·   connected to {s['ssid']}   ·   online")
+        else:
+            self.status_label.setText("NovaOS Wi-Fi: on   ·   not connected")
+        self.radio_btn.setText("Turn Wi-Fi Off" if s["wifi_on"] else "Turn Wi-Fi On")
 
-        # periodic status refresh
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._refresh_status)
-        self._timer.start(8000)
-        self.refresh()
-
-    # -- threaded actions ---------------------------------------------------
-    def refresh(self):
-        self._refresh_status()
+    def _rescan(self):
         self.status_label.setText("Scanning for networks…")
-        threading.Thread(target=lambda: self._scan_ready.emit(wifi_scan()), daemon=True).start()
-
-    def _refresh_status(self):
-        threading.Thread(target=lambda: self._status_ready.emit(wifi_status()), daemon=True).start()
-
-    def _on_status(self, s):
-        bits = []
-        bits.append("Wi-Fi: " + ("on" if s["radio"] else "off"))
-        if s["ssid"]:
-            bits.append("connected to " + s["ssid"])
-        if s["connectivity"]:
-            bits.append("internet: " + s["connectivity"])
-        if s["ip"]:
-            bits.append("IP " + s["ip"])
-        self.status_label.setText("   ·   ".join(bits))
+        threading.Thread(target=lambda: self._scan_ready.emit(scan_networks()),
+                         daemon=True).start()
 
     def _on_scan(self, nets):
+        self._nets = nets
+        self._show_list()
+        self._render_status()
+
+    def _show_list(self):
+        s = state()
+        connected = s["ssid"] if (s["wifi_on"] and s["online"]) else None
         self.listw.clear()
-        for n in nets:
-            mark = "✓ " if n["in_use"] else "   "
-            lock = "secured" if n["security"] not in ("", "Open", "--") else "open"
+        for n in self._nets:
+            mark = "✓ " if n["ssid"] == connected else "   "
+            lock = "open" if n["security"] in ("", "Open", "--") else "secured"
             item = QListWidgetItem(f"{mark}{n['ssid']}    {n['signal']}%   {lock}")
-            item.setData(Qt.UserRole, (n["ssid"], n["security"]))
+            item.setData(Qt.UserRole, n["ssid"])
             self.listw.addItem(item)
-        if not nets:
+        if not self._nets:
             self.listw.addItem(QListWidgetItem("(no networks found)"))
 
-    def _selected(self):
+    # -- virtual actions (no host changes) ----------------------------------
+    def _connect(self):
         item = self.listw.currentItem()
         if item is None:
-            return None
-        data = item.data(Qt.UserRole)
-        return data            # (ssid, security) or None for the placeholder
-
-    def _connect(self):
-        data = self._selected()
-        if not data:
             return
-        ssid, security = data
-        password = None
-        if security not in ("", "Open", "--"):
-            password, ok = QInputDialog.getText(
-                self, "Wi-Fi password",
-                f"Password for '{ssid}'\n(leave blank if it's already saved):",
-                QLineEdit.Password)
-            if not ok:
-                return
-            password = password or None
-        self._busy(f"Connecting to {ssid}…")
-        threading.Thread(
-            target=lambda: self._action_ready.emit(*wifi_connect(ssid, password)),
-            daemon=True).start()
+        ssid = item.data(Qt.UserRole)
+        if ssid:
+            vconnect(ssid)
+            self._render_status()
+            self._show_list()
 
     def _disconnect(self):
-        self._busy("Disconnecting…")
-        threading.Thread(
-            target=lambda: self._action_ready.emit(*wifi_disconnect()),
-            daemon=True).start()
+        vdisconnect()
+        self._render_status()
+        self._show_list()
 
     def _toggle_radio(self):
-        def work():
-            on = wifi_status()["radio"]
-            ok, msg = wifi_set_radio(not on)
-            self._action_ready.emit(ok, msg or ("Wi-Fi turned " + ("off" if on else "on")))
-        self._busy("Toggling Wi-Fi…")
-        threading.Thread(target=work, daemon=True).start()
-
-    def _on_action(self, ok, msg):
-        if not ok:
-            QMessageBox.warning(self, "Network", msg or "Action failed")
-        self.refresh()
-
-    def _busy(self, text):
-        self.status_label.setText(text)
+        set_wifi_on(not state()["wifi_on"])
+        self._render_status()
+        self._show_list()

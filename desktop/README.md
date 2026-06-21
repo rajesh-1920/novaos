@@ -44,7 +44,7 @@ pip install -r requirements.txt        # PySide6
 | **Terminal**| A shell: `help`, `ls`, `cd`, `cat`, `mkdir`, `touch`, `rm`, `echo`, `calc`, `date`, `neofetch`, `open <app>`, `clear` |
 | **Files**   | Browse/create/delete files & folders on the virtual drive    |
 | **Browser** | Web browser — Chromium (Qt WebEngine) if installed, else a built-in lite engine (urllib + QTextBrowser) with address bar, back/forward and search |
-| **Network** | **Real Wi-Fi manager** (via `nmcli`): shows status/SSID/IP, scans networks, connects (with password prompt), disconnects, toggles the radio |
+| **Network** | **Sandboxed** Wi-Fi manager: a *virtual* NovaOS network you can turn on/off, connect and disconnect. It gates NovaOS apps (the Browser goes offline when it's off) but **never changes your computer's real Wi-Fi**. Shows a read-only scan of nearby networks for realism. |
 | **Editor**  | Open, edit and save text files                               |
 | **Calculator** | Four-function calculator                                  |
 | **Settings**| Change wallpaper, theme (dark/light) and username           |

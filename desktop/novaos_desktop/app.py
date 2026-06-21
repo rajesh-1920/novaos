@@ -6,7 +6,6 @@ It provides the wallpaper (an MDI area), a bottom taskbar with a Start menu,
 running-window buttons and a live clock, a column of desktop icons, and the
 window-management glue that launches apps into draggable MDI subwindows.
 """
-import threading
 from datetime import datetime
 
 from .qt import (
@@ -95,7 +94,7 @@ class NovaDesktop(QMainWindow):
         self._net_status.connect(self.net_btn.setText)
         self._net_timer = QTimer(self)
         self._net_timer.timeout.connect(self._poll_net)
-        self._net_timer.start(8000)
+        self._net_timer.start(2000)
         self._poll_net()
 
         QApplication.instance().setStyleSheet(theme_qss(self.theme_name))
@@ -148,8 +147,8 @@ class NovaDesktop(QMainWindow):
         self.clock.setText(datetime.now().strftime("%a %d %b   %H:%M:%S"))
 
     def _poll_net(self):
-        threading.Thread(
-            target=lambda: self._net_status.emit(short_status()), daemon=True).start()
+        # Virtual state -> instant; no subprocess, safe to read on the GUI thread.
+        self._net_status.emit(short_status())
 
     # -- desktop icons ------------------------------------------------------
     def _build_desktop_icons(self):

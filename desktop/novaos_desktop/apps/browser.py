@@ -27,6 +27,7 @@ from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel,
     QTextBrowser, Qt, QUrl, QImage, Signal,
 )
+from .network import is_online
 
 USER_AGENT = "Mozilla/5.0 (X11; NovaOS Desktop) lite-browser"
 HOME = "nova://home"
@@ -64,6 +65,19 @@ HOME_HTML = """
       <a href="https://html.duckduckgo.com/html/?q=NovaOS">Search the web</a> &nbsp;&middot;&nbsp;
       <a href="https://github.com/rajesh-1920/novaos">NovaOS on GitHub</a>
     </p>
+  </div>
+</body>
+"""
+
+
+OFFLINE_HTML = """
+<body style="font-family:sans-serif; color:#e5e9f0;">
+  <div style="text-align:center; margin-top:50px;">
+    <h2 style="color:#f7768e;">You are offline</h2>
+    <p>NovaOS Desktop's Wi-Fi is off or disconnected.</p>
+    <p>Open the <b>Network</b> app and turn Wi-Fi on / connect, then try again.</p>
+    <p style="color:#8a93a8; font-size:12px;">(This is NovaOS's own network switch —
+       your computer's real Wi-Fi is unaffected.)</p>
   </div>
 </body>
 """
@@ -219,6 +233,12 @@ class Browser(QWidget):
         self._update_buttons()
 
     def _load(self, url: str):
+        # NovaOS network gate: if NovaOS Wi-Fi is off, act offline (the host's
+        # real connection is irrelevant here).
+        if url != HOME and not is_online():
+            self._show_offline()
+            return
+
         if self.mode == "webengine":
             if url == HOME:
                 self.view.setHtml(HOME_HTML, QUrl("nova://home/"))
@@ -295,6 +315,14 @@ class Browser(QWidget):
                      f"<h2>Could not load page</h2><p>{url}</p>"
                      f"<pre style='color:#f7768e;'>{error}</pre></body>")
         self._set_status("Failed to load.")
+
+    def _show_offline(self):
+        if self.mode == "webengine":
+            self.view.setHtml(OFFLINE_HTML, QUrl("nova://offline/"))
+        else:
+            self.view.document().setBaseUrl(QUrl("nova://offline/"))
+            self.view.setHtml(OFFLINE_HTML)
+        self._set_status("Offline — enable Wi-Fi in the Network app.")
 
     def _render(self, url: str, html: str):
         """Render html in the lite view, with a base URL for relative resources."""
