@@ -8,7 +8,7 @@ Flags:
 """
 import sys
 
-from .qt import QApplication, QTimer, run_app
+from .qt import QApplication, QTimer, Qt, run_app
 from .filesystem import NovaFS
 from .app import NovaDesktop
 
@@ -21,6 +21,13 @@ def main(argv=None):
     if "--screenshot" in argv:
         i = argv.index("--screenshot")
         shot = argv[i + 1] if i + 1 < len(argv) else "novaos_desktop.png"
+
+    # Required by Qt WebEngine (Chromium), if installed, and harmless otherwise.
+    # Must be set before the QApplication is created.
+    try:
+        QApplication.setAttribute(Qt.AA_ShareOpenGLContexts)
+    except Exception:
+        pass
 
     app = QApplication(argv)
     desktop = NovaDesktop(NovaFS())

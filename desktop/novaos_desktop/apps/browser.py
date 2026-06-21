@@ -291,7 +291,8 @@ class Browser(QWidget):
             self.view = _LiteView(self._image_cache)
             self.view.anchorClicked.connect(self._on_anchor)
             layout.addWidget(self.view, 1)
-            self.status = QLabel("Lite mode — pages load in the background.")
+            self.status = QLabel("Lite mode (HTML only) — install "
+                                 "python3-pyqt5.qtwebengine for full CSS/JS pages.")
             self.status.setStyleSheet("color:#8a93a8; font-size:11px;")
             layout.addWidget(self.status)
             self._loaded.connect(self._on_loaded)
@@ -362,15 +363,23 @@ class Browser(QWidget):
         self._set_status("Loading…")
         threading.Thread(target=self._worker, args=(rid, url), daemon=True).start()
 
+    def _safe_emit(self, signal_name: str, *args):
+        """Emit a signal, tolerating the Browser having been closed (its C++
+        object deleted) while this background thread was still running."""
+        try:
+            getattr(self, signal_name).emit(*args)
+        except RuntimeError:
+            pass
+
     def _worker(self, rid: int, url: str):
         try:
             raw = http_text(url, PAGE_TIMEOUT)
             html = _build_results_page(url, raw) if _is_search(url) else _clean_html(raw)
-            self._loaded.emit(rid, url, html)          # 1) paint the text now
-            n = self._prefetch_images(html, url)       # 2) fetch images (pooled)
-            self._images_ready.emit(rid, url, n)       # 3) fill them in
-        except Exception as exc:                       # noqa: BLE001
-            self._failed.emit(rid, url, str(exc))
+            self._safe_emit("_loaded", rid, url, html)      # 1) paint the text now
+            n = self._prefetch_images(html, url)            # 2) fetch images (pooled)
+            self._safe_emit("_images_ready", rid, url, n)   # 3) fill them in
+        except Exception as exc:                            # noqa: BLE001
+            self._safe_emit("_failed", rid, url, str(exc))
 
     def _prefetch_images(self, html: str, base_url: str) -> int:
         wanted = []

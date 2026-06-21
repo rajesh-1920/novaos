@@ -212,8 +212,14 @@ class Network(QWidget):
 
     def _rescan(self):
         self.status_label.setText("Scanning for networks…")
-        threading.Thread(target=lambda: self._scan_ready.emit(scan_networks()),
-                         daemon=True).start()
+        threading.Thread(target=self._scan_worker, daemon=True).start()
+
+    def _scan_worker(self):
+        nets = scan_networks()
+        try:
+            self._scan_ready.emit(nets)
+        except RuntimeError:
+            pass                       # the Network window was closed mid-scan
 
     def _on_scan(self, nets):
         self._nets = nets
