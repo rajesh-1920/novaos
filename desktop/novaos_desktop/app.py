@@ -24,6 +24,7 @@ from .apps.editor import Editor
 from .apps.browser import Browser
 from .apps.network import Network, short_status
 from .apps.monitor import Monitor
+from .apps.camera import Camera
 from .apps.calculator import Calculator
 from .apps.settings import Settings
 from .apps.about import About
@@ -36,6 +37,7 @@ APP_SPECS = {
     "Browser":    ("B", "#2563eb"),
     "Network":    ("N", "#0d9488"),
     "Monitor":    ("M", "#e11d48"),
+    "Camera":     ("◉", "#db2777"),
     "Editor":     ("E", "#8a5cf6"),
     "Calculator": ("C", "#c2410c"),
     "Settings":   ("S", "#475569"),
@@ -48,6 +50,7 @@ DEFAULT_SIZES = {
     "Browser":    QSize(860, 580),
     "Network":    QSize(540, 480),
     "Monitor":    QSize(700, 480),
+    "Camera":     QSize(640, 560),
     "Editor":     QSize(640, 470),
     "Calculator": QSize(300, 430),
     "Settings":   QSize(440, 380),
@@ -198,6 +201,8 @@ class NovaDesktop(QMainWindow):
             return Network()
         if name == "Monitor":
             return Monitor(self)
+        if name == "Camera":
+            return Camera(self.fs)
         if name == "Editor":
             w = Editor(self.fs)
             if path:
