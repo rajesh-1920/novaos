@@ -155,24 +155,27 @@ class NovaDesktop(QMainWindow):
         self.icons = QWidget(self.mdi.viewport())
         self.icons.setObjectName("DesktopIcons")
         col = QVBoxLayout(self.icons)
-        col.setContentsMargins(12, 12, 12, 12)
-        col.setSpacing(16)
+        col.setContentsMargins(10, 12, 10, 12)
+        col.setSpacing(14)
         for name in ("Terminal", "Files", "Browser", "Network", "Editor", "About"):
             letter, color = APP_SPECS[name]
             btn = QToolButton()
             btn.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
             btn.setIcon(make_icon(letter, color))
-            btn.setIconSize(QSize(46, 46))
+            btn.setIconSize(QSize(44, 44))
             btn.setText(name)
+            btn.setFixedWidth(96)                 # room for the full label
             btn.setStyleSheet(
-                "QToolButton { color: white; background: transparent; border: none; }"
+                "QToolButton { color: white; background: transparent; border: none;"
+                " padding: 4px; }"
                 "QToolButton:hover { background: rgba(255,255,255,0.14); border-radius: 8px; }"
             )
             btn.clicked.connect(lambda _=False, n=name: self.launch_app(n))
-            col.addWidget(btn)
-        col.addStretch(1)
-        self.icons.move(0, 0)
-        self.icons.resize(110, 460)
+            col.addWidget(btn, 0, Qt.AlignHCenter)
+        self.icons.move(8, 8)
+        # Size the panel to its content so each button keeps its full height and
+        # the label under the icon is never clipped.
+        self.icons.resize(self.icons.sizeHint())
         self.icons.show()
         self.icons.raise_()
 
