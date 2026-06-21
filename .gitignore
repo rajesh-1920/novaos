@@ -14,3 +14,7 @@
 __pycache__/
 *.pyc
 *.pyo
+
+# Unrelated files kept out of this repo (still on disk)
+docs/SmartPoultryFarm-Report.*
+docs/circuit-diagram.png
