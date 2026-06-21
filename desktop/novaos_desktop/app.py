@@ -12,7 +12,7 @@ from datetime import datetime
 from .qt import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QMdiArea, QFrame,
     QPushButton, QToolButton, QLabel, QMenu, QApplication,
-    Qt, QTimer, QSize, QPoint, Signal,
+    Qt, QTimer, QSize, QPoint, Signal, QShortcut, QKeySequence,
 )
 
 from .icons import make_icon
@@ -111,6 +111,12 @@ class NovaDesktop(QMainWindow):
 
         QApplication.instance().setStyleSheet(theme_qss(self.theme_name))
 
+        # Global shortcuts.
+        close_sc = QShortcut(QKeySequence("Ctrl+W"), self)
+        close_sc.activated.connect(self._close_active)
+        quit_sc = QShortcut(QKeySequence("Ctrl+Q"), self)
+        quit_sc.activated.connect(self.close)
+
     # -- taskbar ------------------------------------------------------------
     def _build_taskbar(self):
         bar = QFrame()
@@ -154,6 +160,11 @@ class NovaDesktop(QMainWindow):
         # pop up just above the Start button
         pos = self.start_btn.mapToGlobal(QPoint(0, 0))
         menu.popup(QPoint(pos.x(), pos.y() - menu.sizeHint().height()))
+
+    def _close_active(self):
+        sub = self.mdi.activeSubWindow()
+        if sub is not None:
+            sub.close()
 
     def _tick_clock(self):
         self.clock.setText(datetime.now().strftime("%a %d %b   %H:%M:%S"))

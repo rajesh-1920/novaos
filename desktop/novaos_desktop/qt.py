@@ -13,7 +13,7 @@ try:
     )
     from PySide6.QtGui import (
         QIcon, QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QGradient,
-        QImage,
+        QImage, QKeySequence, QShortcut,
     )
     from PySide6.QtWidgets import (
         QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -29,14 +29,14 @@ except ImportError:  # fall back to PyQt5
     )
     from PyQt5.QtGui import (
         QIcon, QPixmap, QPainter, QColor, QFont, QBrush, QLinearGradient, QGradient,
-        QImage,
+        QImage, QKeySequence,
     )
     from PyQt5.QtWidgets import (
         QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
         QFormLayout, QMdiArea, QMdiSubWindow, QFrame, QPushButton, QToolButton,
         QLabel, QMenu, QPlainTextEdit, QLineEdit, QListWidget, QListWidgetItem,
         QComboBox, QInputDialog, QMessageBox, QTextBrowser,
-        QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
+        QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView, QShortcut,
     )
     BINDING = "PyQt5"
 

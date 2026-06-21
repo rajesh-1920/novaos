@@ -19,6 +19,22 @@ BANNER = r"""
 """
 
 
+class _CmdEdit(QLineEdit):
+    """Command input with Up/Down history recall."""
+
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Up:
+            self.owner._history_prev()
+        elif event.key() == Qt.Key_Down:
+            self.owner._history_next()
+        else:
+            super().keyPressEvent(event)
+
+
 class Terminal(QWidget):
     def __init__(self, fs, launch_app=None, system_info=None, get_username=None):
         super().__init__()
@@ -27,6 +43,8 @@ class Terminal(QWidget):
         self.system_info = system_info or (lambda: {})
         self.get_username = get_username or (lambda: "nova")
         self.cwd = ""                       # current dir, relative to drive root
+        self._history = []                  # command history
+        self._hist = 0                      # cursor into history
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 8, 8, 8)
@@ -39,7 +57,7 @@ class Terminal(QWidget):
         row = QHBoxLayout()
         self.prompt = QLabel(self._prompt_text())
         self.prompt.setFont(QFont("Monospace", 11))
-        self.input = QLineEdit()
+        self.input = _CmdEdit(self)
         self.input.setFont(QFont("Monospace", 11))
         self.input.returnPressed.connect(self._on_enter)
         row.addWidget(self.prompt)
@@ -64,11 +82,33 @@ class Terminal(QWidget):
     def _on_enter(self):
         line = self.input.text()
         self.input.clear()
+        if line.strip():
+            self._history.append(line)
+        self._hist = len(self._history)
         self._println(f"{self._prompt_text()} {line}")
         self._run(line.strip())
         self._refresh_prompt()
         bar = self.output.verticalScrollBar()
         bar.setValue(bar.maximum())
+
+    def _history_prev(self):
+        if not self._history:
+            return
+        if self._hist > 0:
+            self._hist -= 1
+        self.input.setText(self._history[self._hist])
+        self.input.end(False)
+
+    def _history_next(self):
+        if not self._history:
+            return
+        if self._hist < len(self._history) - 1:
+            self._hist += 1
+            self.input.setText(self._history[self._hist])
+            self.input.end(False)
+        else:
+            self._hist = len(self._history)
+            self.input.clear()
 
     # -- command dispatch ---------------------------------------------------
     def _run(self, line):

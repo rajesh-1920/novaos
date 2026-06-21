@@ -68,6 +68,7 @@ class Monitor(QWidget):
         controls = QHBoxLayout()
         self.end_btn = QPushButton("End Task")
         self.end_btn.clicked.connect(self._end_task)
+        self.end_btn.setShortcut("Delete")
         self.focus_btn = QPushButton("Switch To")
         self.focus_btn.clicked.connect(self._switch_to)
         self.refresh_btn = QPushButton("Refresh")

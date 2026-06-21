@@ -57,6 +57,25 @@ Open apps from the **desktop icons**, the **Start menu**, or the Terminal
 (`open Files`). Windows can be moved, resized, minimized, maximized and closed;
 the taskbar tracks open windows and shows a live clock.
 
+## Keyboard shortcuts
+
+| Where        | Key(s)                | Action                          |
+|--------------|-----------------------|---------------------------------|
+| Global       | `Ctrl+W`              | close the active window         |
+| Global       | `Ctrl+Q`              | log out / power off             |
+| Files        | `Delete`              | delete the selected item        |
+| Files        | `Enter`               | open file / enter folder        |
+| Files        | `Backspace`           | go up a directory               |
+| Files        | `F5`                  | refresh                         |
+| Editor       | `Ctrl+N/O/S`          | new / open / save               |
+| Browser      | `Alt+←` / `Alt+→`     | back / forward                  |
+| Browser      | `Ctrl+R`, `Ctrl+L`    | reload, focus address bar       |
+| Terminal     | `↑` / `↓`             | command history                 |
+| Monitor      | `Delete`              | end the selected app            |
+
+(Standard text editing keys — `Ctrl+C/V/X/Z/A`, arrows, Home/End — work in any
+text field, courtesy of Qt.)
+
 ## Where files live
 
 All app file I/O is sandboxed to a **virtual drive** at

@@ -28,7 +28,7 @@ from html import escape as _esc, unescape as _unesc
 
 from ..qt import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel,
-    QTextBrowser, Qt, QUrl, QImage, Signal,
+    QTextBrowser, Qt, QUrl, QImage, Signal, QShortcut, QKeySequence,
 )
 from .network import is_online
 
@@ -279,6 +279,13 @@ class Browser(QWidget):
         self.home_btn.clicked.connect(lambda: self.navigate(HOME))
         self.go_btn.clicked.connect(self._go)
 
+        self.back_btn.setShortcut("Alt+Left")
+        self.fwd_btn.setShortcut("Alt+Right")
+        self.reload_btn.setShortcut("Ctrl+R")
+        self.home_btn.setShortcut("Alt+Home")
+        addr_sc = QShortcut(QKeySequence("Ctrl+L"), self)
+        addr_sc.activated.connect(self._focus_address)
+
         if HAVE_WEBENGINE:
             self.mode = "webengine"
             self.view = QWebEngineView()
@@ -452,6 +459,10 @@ class Browser(QWidget):
     def _set_status(self, text: str):
         if self.status is not None:
             self.status.setText(text)
+
+    def _focus_address(self):
+        self.address.setFocus()
+        self.address.selectAll()
 
     def _go(self):
         text = self.address.text().strip()

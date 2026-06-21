@@ -9,6 +9,27 @@ from ..qt import (
 from ..icons import make_icon
 
 
+class _FileList(QListWidget):
+    """A list that routes file-manager keys (Delete/Enter/Backspace/F5)."""
+
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def keyPressEvent(self, event):
+        key = event.key()
+        if key == Qt.Key_Delete:
+            self.owner._delete()
+        elif key in (Qt.Key_Return, Qt.Key_Enter):
+            self.owner._open_selected()
+        elif key == Qt.Key_Backspace:
+            self.owner._go_up()
+        elif key == Qt.Key_F5:
+            self.owner.refresh()
+        else:
+            super().keyPressEvent(event)
+
+
 class Files(QWidget):
     def __init__(self, fs, open_file=None):
         super().__init__()
@@ -37,12 +58,19 @@ class Files(QWidget):
         self.path_label = QLabel()
         layout.addWidget(self.path_label)
 
-        self.listw = QListWidget()
+        self.listw = _FileList(self)
         self.listw.setIconSize(QSize(28, 28))
         self.listw.itemDoubleClicked.connect(self._open_item)
         layout.addWidget(self.listw, 1)
 
+        self.del_btn.setShortcut("Delete")     # also works from the button focus
+        self.refresh_btn.setShortcut("F5")
         self.refresh()
+
+    def _open_selected(self):
+        item = self.listw.currentItem()
+        if item is not None:
+            self._open_item(item)
 
     def refresh(self):
         self.path_label.setText("Drive: /" + self.cwd)
